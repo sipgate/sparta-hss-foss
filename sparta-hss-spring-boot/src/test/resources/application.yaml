@@ -1,0 +1,24 @@
+sipgate:
+    profileDir: "src/test/resources/imsiProfiles"
+    ims:
+        userProfile:
+            path: "src/test/resources/user-profile.xml"
+    diameter:
+        origin-host: "hss.test.example.org"
+        origin-realm: "test.example.org"
+        peers:
+            - host: "localhost"
+              port: 3868
+        capabilities:
+            - "Cx/Dx"
+            - "S6a/S6d"
+            - "SWx"
+
+spring:
+    datasource:
+        url: "jdbc:h2:mem:spartahss;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS SPARTAHSS;MODE=LEGACY;IGNORECASE=TRUE"
+        driver-class-name: org.h2.Driver
+    jpa:
+        hibernate:
+            ddl-auto: create
+        open-in-view: false

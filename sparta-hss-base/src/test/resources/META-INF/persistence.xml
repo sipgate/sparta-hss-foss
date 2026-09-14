@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.0"
+             xmlns="http://java.sun.com/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+    <persistence-unit name="integration-test" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>com.sipgate.sparta.hss.persistence.entities.RoamingBlockedImsiOverride</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.RoamingBlockedImsiOverrideLte</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.RoamingBlockedLocation</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.RoamingBlockedLocationLte</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.RoamingBlockedEvent</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.Imsi</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.ImsiProfile</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.ImsiScscf</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.LocationVowifi</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.LocationLTE</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.Msisdn</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.Sim</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.TacProfile</class>
+        <properties>
+            <property name="hibernate.connection.url"
+                      value="jdbc:h2:mem:spartahss;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS SPARTAHSS;MODE=LEGACY;IGNORECASE=TRUE"/>
+            <property name="hibernate.connection.driver_class" value="org.h2.Driver"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.hbm2ddl.auto" value="create"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+        </properties>
+    </persistence-unit>
+</persistence>
