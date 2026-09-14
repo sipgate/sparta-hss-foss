@@ -4,17 +4,11 @@
     xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <modelVersion>4.0.0</modelVersion>
-    <properties>
-        <java.version>25</java.version>
-        <maven.compiler.target>25</maven.compiler.target>
-        <maven.compiler.source>25</maven.compiler.source>
-    </properties>
 
-    <groupId>com.sipgate.sparta</groupId>
+    <groupId>com.sipgate</groupId>
     <artifactId>sparta-hss-foss-parent</artifactId>
     <name>sparta-hss-foss-parent</name>
-    <version>0.0.1-SNAPSHOT</version>
-
+    <version>0.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -22,22 +16,100 @@
         <module>sparta-hss-spring-boot</module>
     </modules>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>25</java.version>
+
+        <!--`mvn test -DexcludedGroups= -Dtest=SomeIT`. -->
+        <excludedGroups>spring-test</excludedGroups>
+
+        <!-- our own libs -->
+        <sparta-diameter.version>0.1.14-SNAPSHOT</sparta-diameter.version>
+
+        <!-- shared third-party versions -->
+        <micrometer.version>1.16.5</micrometer.version>
+        <jakarta.xml.bind.version>4.0.4</jakarta.xml.bind.version>
+        <jaxb-runtime.version>4.0.6</jaxb-runtime.version>
+        <instancio.version>5.5.1</instancio.version>
+        <h2.version>2.3.232</h2.version>
+        <byte-buddy.version>1.17.7</byte-buddy.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-bom</artifactId>
+                <version>${micrometer.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.sipgate</groupId>
+                <artifactId>sparta-diameter-3gpp-s6a</artifactId>
+                <version>${sparta-diameter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sipgate</groupId>
+                <artifactId>sparta-diameter-3gpp-cxdx</artifactId>
+                <version>${sparta-diameter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sipgate</groupId>
+                <artifactId>sparta-diameter-3gpp-swx</artifactId>
+                <version>${sparta-diameter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>jakarta.xml.bind</groupId>
+                <artifactId>jakarta.xml.bind-api</artifactId>
+                <version>${jakarta.xml.bind.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.jaxb</groupId>
+                <artifactId>jaxb-runtime</artifactId>
+                <version>${jaxb-runtime.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.instancio</groupId>
+                <artifactId>instancio-junit</artifactId>
+                <version>${instancio.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+            </dependency>
+
+            <!-- Mockito's inline mock maker needs a byte-buddy that understands the JDK 25
+                 class-file format; hibernate-core would otherwise downgrade it to 1.15.x. -->
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${byte-buddy.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.16.0</version>
                     <configuration>
                         <release>${java.version}</release>
+                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.2.5</version>
+                    <version>3.5.4</version>
                     <configuration>
-                        <excludedGroups>spring-test</excludedGroups>
+                        <excludedGroups>${excludedGroups}</excludedGroups>
                     </configuration>
                 </plugin>
             </plugins>

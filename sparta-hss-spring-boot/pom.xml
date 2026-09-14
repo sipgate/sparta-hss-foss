@@ -1,30 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
+        <groupId>com.sipgate</groupId>
+        <artifactId>sparta-hss-foss-parent</artifactId>
+        <version>0.0.2-SNAPSHOT</version>
     </parent>
-    <groupId>com.sipgate</groupId>
+
     <artifactId>sparta-hss-spring-boot</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <name>sparta-hss-spring-boot</name>
     <description>FOSS version of sipgate's sparta HSS, ready for use as Spring Boot application</description>
     <packaging>jar</packaging>
 
     <properties>
-        <java.version>25</java.version>
-        <maven.compiler.target>25</maven.compiler.target>
-        <maven.compiler.source>25</maven.compiler.source>
-        <!-- sparta-diameter uses Netty 4.2 APIs (MultiThreadIoEventLoopGroup); override Spring Boot's 4.1.x. -->
+        <spring-boot.version>3.5.7</spring-boot.version>
+        <!-- sparta-diameter uses Netty 4.2 APIs (MultiThreadIoEventLoopGroup). netty-bom must be
+             imported BEFORE spring-boot-dependencies so its 4.2.x wins over Boot's 4.1.x
+             management (with an imported BOM, a plain <netty.version> property override no
+             longer works, unlike with spring-boot-starter-parent inheritance). -->
         <netty.version>4.2.10.Final</netty.version>
-        <!-- As a property (not hardcoded plugin config) so integration tests can run via
-             `mvn test -DexcludedGroups= -Dtest=SomeIT` — a literal <excludedGroups> in the
-             surefire <configuration> would win over the command line. -->
+
+        <!-- JUnit tag groups to exclude from Surefire; inherited default is `spring-test`.
+             As a property so integration tests can run via `mvn test -DexcludedGroups= -Dtest=SomeIT`. -->
         <excludedGroups>Integration,E2E</excludedGroups>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Must be imported before spring-boot-dependencies so the reactor-wide micrometer
+                 version (parent property) wins over the version managed by Spring Boot. -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-bom</artifactId>
+                <version>${micrometer.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -43,25 +70,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-            <version>4.0.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jaxb</groupId>
-            <artifactId>jaxb-runtime</artifactId>
-            <version>4.0.6</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -83,11 +98,28 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.instancio</groupId>
             <artifactId>instancio-junit</artifactId>
-            <version>5.5.1</version>
             <scope>test</scope>
         </dependency>
         <!-- h2 for tests -->
@@ -95,15 +127,6 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jspecify</groupId>
-            <artifactId>jspecify</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
         <!--
@@ -113,23 +136,12 @@
         <dependency>
             <groupId>com.sipgate</groupId>
             <artifactId>sparta-hss-base</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
-
     </dependencies>
 
     <build>
         <finalName>sparta-hss-spring-boot</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
-                <configuration>
-                    <excludedGroups>${excludedGroups}</excludedGroups>
-                </configuration>
-            </plugin>
-        </plugins>
     </build>
 
 </project>
