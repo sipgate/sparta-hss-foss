@@ -1,0 +1,55 @@
+<SubscriptionData vendor="10415">
+    <SubscriberStatus vendor="10415">serviceGranted</SubscriberStatus>
+    <MSISDN vendor="10415">will-be-replaced-by-hss</MSISDN>
+    <NetworkAccessMode vendor="10415">packet-and-circuit</NetworkAccessMode>
+    <AMBR vendor="10415">
+        <MaxRequestedBandwithUL vendor="10415">32000000</MaxRequestedBandwithUL>
+        <MaxRequestedBandwithDL vendor="10415">50000000</MaxRequestedBandwithDL>
+    </AMBR>
+    <APNConfigurationProfile vendor="10415">
+        <ContextIdentifier vendor="10415">1</ContextIdentifier>
+        <AllAPNConfigIncluded vendor="10415">yes</AllAPNConfigIncluded>
+        <APNConfiguration vendor="10415">
+            <ContextIdentifier vendor="10415">1</ContextIdentifier>
+            <PDNType vendor="10415">ipv4</PDNType>
+            <ServiceSelection>internet</ServiceSelection>
+            <EpsSubscribedQosProfile vendor="10415">
+                <QosClassIdentifier vendor="10415">9</QosClassIdentifier>
+                <AllocationRetentionPriority vendor="10415">
+                    <PriorityLevel vendor="10415">2</PriorityLevel>
+                    <PreemptionCapability vendor="10415">no</PreemptionCapability>
+                    <PreemptionVulnerability vendor="10415">yes</PreemptionVulnerability>
+                </AllocationRetentionPriority>
+            </EpsSubscribedQosProfile>
+            <AMBR vendor="10415">
+                <MaxRequestedBandwithUL vendor="10415">32000000</MaxRequestedBandwithUL>
+                <MaxRequestedBandwithDL vendor="10415">50000000</MaxRequestedBandwithDL>
+            </AMBR>
+        </APNConfiguration>
+
+        <APNConfiguration vendor="10415">
+            <ContextIdentifier vendor="10415">2</ContextIdentifier>
+            <SIPTOPermission vendor="10415">no</SIPTOPermission>
+            <LIPAPermission vendor="10415">prohibited</LIPAPermission>
+            <PDNType vendor="10415">ipv4v6</PDNType>
+            <ServiceSelection>ims</ServiceSelection>
+            <EpsSubscribedQosProfile vendor="10415">
+                <QosClassIdentifier vendor="10415">5</QosClassIdentifier>
+                <AllocationRetentionPriority vendor="10415">
+                    <PriorityLevel vendor="10415">1</PriorityLevel>
+                    <PreemptionCapability vendor="10415">no</PreemptionCapability>
+                    <PreemptionVulnerability vendor="10415">no</PreemptionVulnerability>
+                </AllocationRetentionPriority>
+            </EpsSubscribedQosProfile>
+            <VPlmnDynamicAddrAllowed vendor="10415">no</VPlmnDynamicAddrAllowed>
+            <AMBR vendor="10415">
+                <MaxRequestedBandwithUL vendor="10415">1024000</MaxRequestedBandwithUL>
+                <MaxRequestedBandwithDL vendor="10415">1024000</MaxRequestedBandwithDL>
+            </AMBR>
+            <ChargingCharacteristics vendor="10415">0800</ChargingCharacteristics>
+            <APNOIReplacement vendor="10415">example.mnc999.mcc999.gprs</APNOIReplacement>
+        </APNConfiguration>
+    </APNConfigurationProfile>
+    <ChargingCharacteristics vendor="10415">0800</ChargingCharacteristics>
+    <RATFreqSelPriorityID vendor="10415">1</RATFreqSelPriorityID>
+</SubscriptionData>

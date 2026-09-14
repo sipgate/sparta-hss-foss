@@ -1,0 +1,78 @@
+# Batteries-included defaults for running this module as the application. An application built
+# on top of this module ships its own application.yaml, which replaces this file entirely.
+sipgate:
+    profileDir: "/app/imsiProfiles"
+    auc:
+        # What the sim table's op column holds: "opc" (pre-computed OPc, the 3GPP TS 35.205
+        # recommendation) or "op" (OPc is then derived on every authentication).
+        stored-key-format: opc
+    ims:
+        userProfile:
+            path: "/app/user-profile.xml"
+    # The HTTP admin endpoints are opt-in.
+    http:
+        profile:
+            enabled: false
+        roaming-block:
+            enabled: false
+        volte-location:
+            enabled: false
+    diameter:
+        origin-host: "${please provide sipgate.diameter.origin-host}"
+        origin-realm: "${please provide sipgate.diameter.origin-realm}"
+        peers:
+            - host: "${please provide sipgate.diameter.peers[0].host}"
+              port: 3868
+        # Advertised in the CER. An interface that is not listed here is not even loaded:
+        # its handlers and supporting beans do not exist in that deployment.
+        capabilities:
+            - "Cx/Dx"
+            - "S6a/S6d"
+            - "SWx"
+
+spring:
+    # The zero-setup default: a SQLite file next to the application, schema derived from the
+    # entities. Good for labs and trying things out. For production traffic, point this at a
+    # client/server database (any Hibernate-supported dialect works), manage the schema
+    # yourself and set ddl-auto to none.
+    datasource:
+        url: "jdbc:sqlite:sparta-hss.db"
+        driver-class-name: org.sqlite.JDBC
+    jpa:
+        hibernate:
+            ddl-auto: update
+            naming:
+                # Table and column names are taken from the entities as written, without
+                # camelCase-to-snake_case translation.
+                physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        properties:
+            hibernate.dialect: org.hibernate.community.dialect.SQLiteDialect
+        open-in-view: false
+
+management:
+    health:
+        defaults:
+            enabled: false
+        db:
+            enabled: true
+        ping:
+            enabled: true
+    endpoints:
+        web:
+            base-path: /
+            exposure:
+                include:
+                    - health
+                    - metrics
+                    - prometheus
+    endpoint:
+        health:
+            show-details: always
+            group:
+                live:
+                    include:
+                        - ping
+                ready:
+                    include:
+                        - db
+                        - diameterConnection

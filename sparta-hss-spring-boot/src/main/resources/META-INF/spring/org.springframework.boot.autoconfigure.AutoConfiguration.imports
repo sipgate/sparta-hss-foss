@@ -1,0 +1,7 @@
+com.sipgate.sparta.hss.configuration.HssPersistenceConfiguration
+com.sipgate.sparta.hss.configuration.HssServiceConfiguration
+com.sipgate.sparta.hss.configuration.S6aConfiguration
+com.sipgate.sparta.hss.configuration.CxConfiguration
+com.sipgate.sparta.hss.configuration.SwxConfiguration
+com.sipgate.sparta.hss.configuration.DiameterClientConfiguration
+com.sipgate.sparta.hss.configuration.DiameterEventThreadPoolConfiguration
