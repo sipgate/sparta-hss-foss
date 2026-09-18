@@ -28,10 +28,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "25"
+          cache: maven
       - name: Set version tag
         id: version
         run: |
-          TAG=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          TAG=$(./mvnw -B org.apache.maven.plugins:maven-help-plugin:3.5.2:evaluate -Dexpression=project.version -q -DforceStdout)
+          if [[ ! "$TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "Refusing to publish: '$TAG' is not a valid Docker tag" >&2
+            exit 1
+          fi
           TAGS="sipgategmbh/sparta-hss-foss:$TAG"
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAGS="$TAGS,sipgategmbh/sparta-hss-foss:latest"
