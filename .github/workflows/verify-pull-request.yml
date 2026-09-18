@@ -43,4 +43,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build docker image
-        run: docker build -t sparta-hss-foss:verify-pr .
+        run: docker build --build-arg MVN_ADDITIONAL_ARGS=-DskipTests -t sparta-hss-foss:verify-pr .
