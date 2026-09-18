@@ -1,4 +1,4 @@
-FROM maven:3.9.11-eclipse-temurin-25 AS build
+FROM --platform=$BUILDPLATFORM maven:3.9.11-eclipse-temurin-25 AS build
 
 # download maven dependencies (module poms only, so this layer survives source changes)
 RUN mkdir -p /usr/src/build
