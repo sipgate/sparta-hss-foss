@@ -1,14 +1,14 @@
 # Batteries-included defaults for running this module as the application. An application built
 # on top of this module ships its own application.yaml, which replaces this file entirely.
 sipgate:
-    profileDir: "/app/imsiProfiles"
+    profileDir: "/usr/local/etc/sparta-hss/imsiProfiles"
     auc:
         # What the sim table's op column holds: "opc" (pre-computed OPc, the 3GPP TS 35.205
         # recommendation) or "op" (OPc is then derived on every authentication).
         stored-key-format: opc
     ims:
         userProfile:
-            path: "/app/user-profile.xml"
+            path: "/usr/local/etc/sparta-hss/user-profile.xml"
     # The HTTP admin endpoints are opt-in.
     http:
         profile:
