@@ -23,11 +23,9 @@ WORKDIR /app
 COPY --from=build /usr/src/build/sparta-hss-spring-boot/target/sparta-hss-spring-boot.jar /app/sparta-hss.jar
 COPY --from=build /usr/src/build/sparta-hss-spring-boot/target/dependency/ /app/lib/
 
-# Default Cx user-profile template (sipgate.ims.userProfile.path points here)
-# and default S6a subscription-data profile (sipgate.profileDir points here);
-# mount your own over them.
-COPY docker/user-profile.xml /app/user-profile.xml
-COPY docker/imsiProfiles /app/imsiProfiles
+# Default Cx user-profile template (sipgate.ims.userProfile.path) and S6a subscription-data
+# profiles (sipgate.profileDir); mount your own directory over them.
+COPY docker/config /usr/local/etc/sparta-hss
 
 RUN useradd --system --uid 10001 --user-group --no-create-home sparta \
     && mkdir -p /var/lib/sparta-hss \
