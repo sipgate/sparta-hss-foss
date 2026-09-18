@@ -4,11 +4,5 @@
         <PublicIdentity>
             <Identity>tel:+{msisdn}</Identity>
         </PublicIdentity>
-        <InitialFilterCriteria>
-            <ApplicationServer>
-                <ServerName>sip:as.invalid</ServerName>
-            </ApplicationServer>
-            <Priority>0</Priority>
-        </InitialFilterCriteria>
     </ServiceProfile>
 </IMSSubscription>
