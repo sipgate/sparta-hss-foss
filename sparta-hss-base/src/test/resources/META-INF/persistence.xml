@@ -14,6 +14,7 @@
         <class>com.sipgate.sparta.hss.persistence.entities.ImsiProfile</class>
         <class>com.sipgate.sparta.hss.persistence.entities.ImsiScscf</class>
         <class>com.sipgate.sparta.hss.persistence.entities.LocationVowifi</class>
+        <class>com.sipgate.sparta.hss.persistence.entities.LocationIpSmGw</class>
         <class>com.sipgate.sparta.hss.persistence.entities.LocationLTE</class>
         <class>com.sipgate.sparta.hss.persistence.entities.Msisdn</class>
         <class>com.sipgate.sparta.hss.persistence.entities.Sim</class>

@@ -3,6 +3,7 @@ package com.sipgate.sparta.hss.diameter.cx.sar.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
+import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import java.io.IOException;
 import jakarta.xml.bind.JAXBException;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,8 @@ class ImsServiceTest {
     private static final String MSISDN = "any-msisdn";
     @Mock
     private ImsiScscfDao imsiScscfDao;
+    @Mock
+    private LocationIpSmGwDao locationIpSmGwDao;
     private ImsService underTest;
 
     private static String createDefaultUserData() {
@@ -33,7 +36,7 @@ class ImsServiceTest {
 
     @BeforeEach
     void setUp() throws JAXBException, IOException {
-        underTest = new ImsService(imsiScscfDao, "src/test/resources/userProfile.xml");
+        underTest = new ImsService(imsiScscfDao, locationIpSmGwDao, "src/test/resources/userProfile.xml");
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.sipgate.sparta.hss.persistence.ImsiDao;
 import com.sipgate.sparta.hss.persistence.ImsiProfileDao;
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.LocationLteDao;
+import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.MsisdnDao;
 import com.sipgate.sparta.hss.persistence.MsisdnScscfDao;
@@ -66,6 +67,11 @@ public class HssPersistenceConfiguration {
     @Bean
     public LocationVowifiDao locationVowifiDao(final EntityManager entityManager) {
         return new LocationVowifiDao(entityManager);
+    }
+
+    @Bean
+    public LocationIpSmGwDao locationIpSmGwDao(final EntityManager entityManager) {
+        return new LocationIpSmGwDao(entityManager);
     }
 
     @Bean

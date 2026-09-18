@@ -2,6 +2,9 @@ package com.sipgate.sparta.hss.diameter.cx.sar;
 
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_IDENTITIES_DONT_MATCH;
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN;
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_IP_SM_GW_NAME;
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_IP_SM_GW_REALM;
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_SERVING_NODE;
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_PUBLIC_IDENTITY;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_FEATURE_UNSUPPORTED;
@@ -26,8 +29,9 @@ import static org.mockito.Mockito.*;
 
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentAnswer;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentRequest;
-import com.sipgate.sparta.diameter.base.core.DiameterConstants;
+import com.sipgate.sparta.diameter.base.core.avp.AVP;
 import com.sipgate.sparta.diameter.base.core.avp.AVPContainer;
+import com.sipgate.sparta.diameter.base.core.DiameterConstants;
 import com.sipgate.sparta.diameter.base.core.Answer;
 import com.sipgate.sparta.diameter.base.core.Command;
 import com.sipgate.sparta.diameter.base.core.EndToEndId;
@@ -121,6 +125,16 @@ class ServerAssignmentHandlerTest {
         final Integer serverAssignmentType, final String serverName,
         final Integer userDataAlreadyAvailable) throws Exception
     {
+        return buildSar(username, publicIdentities, serverAssignmentType, serverName, userDataAlreadyAvailable, null);
+    }
+
+    /** Same as {@link #buildSar(String, List, Integer, String, Integer)} plus an optional Serving-Node AVP. */
+    private static ServerAssignmentRequest.In buildSar(
+        final String username, final List<String> publicIdentities,
+        final Integer serverAssignmentType, final String serverName,
+        final Integer userDataAlreadyAvailable,
+        final List<AVP> servingNodeChildren) throws Exception
+    {
         final var out = new ServerAssignmentRequest.Out();
         if (username != null) {
             out.setUserName(username);
@@ -139,6 +153,9 @@ class ServerAssignmentHandlerTest {
         }
         out.setOriginHost(ANY_DIAMETER_ORIGIN_HOST);
         out.setOriginRealm(ANY_DIAMETER_ORIGIN_REALM);
+        if (servingNodeChildren != null) {
+            out.addAVP(AVP.create(new AVPKey(AVP_SERVING_NODE, VENDOR_ID_3GPP), servingNodeChildren));
+        }
 
         final var baos = new ByteArrayOutputStream();
         out.writeTo(new DataOutputStream(baos), new HopByHopId(1), new EndToEndId(2));
@@ -503,6 +520,7 @@ class ServerAssignmentHandlerTest {
 
         verify(imsService).getScscf(KNOWN_IMSI);
         verify(imsService).clearScscf(KNOWN_IMSI);
+        verify(imsService).clearIpSmGw(KNOWN_IMSI);
         verifyNoMoreInteractions(imsService);
         assertThat(scscfCaptor.getValue())
                 .isEqualTo(ScscfAssignmentChanged.ofUnregister(KNOWN_IMSI));
@@ -524,5 +542,91 @@ class ServerAssignmentHandlerTest {
         verifyNoInteractions(imsService, eventPublisher);
         assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_SUCCESS);
         assertThat(answer.getUserData()).isNull();
+    }
+
+    private static List<AVP> servingNodeWithIpSmGw() {
+        return List.of(
+            AVP.create(new AVPKey(AVP_IP_SM_GW_NAME, VENDOR_ID_3GPP), "ucn01.dev.sgwl.epc.mnc003.mcc262.3gppnetwork.org"),
+            AVP.create(new AVPKey(AVP_IP_SM_GW_REALM, VENDOR_ID_3GPP), "epc.mnc003.mcc262.3gppnetwork.org"));
+    }
+
+    @Test
+    void itStoresIpSmGwWhenServingNodePresent() throws Exception {
+        // GIVEN a registration SAR whose Serving-Node carries the UCN as IP-SM-GW
+        final var request = buildSar(
+            KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
+            SERVER_ASSIGNMENT_REGISTRATION, ANY_SCSCF, null, servingNodeWithIpSmGw());
+
+        when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
+        when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
+        when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());
+        when(imsService.createUserData(KNOWN_PRIVATE_IDENTITY, KNOWN_MSISDN)).thenReturn("any-user-data");
+
+        // WHEN
+        final var answer = underTest.handle(request).join();
+
+        // THEN
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_SUCCESS);
+        verify(imsService).setIpSmGw(KNOWN_IMSI, "ucn01.dev.sgwl.epc.mnc003.mcc262.3gppnetwork.org", "epc.mnc003.mcc262.3gppnetwork.org");
+    }
+
+    @Test
+    void itDoesNotStoreIpSmGwWhenServingNodeAbsent() throws Exception {
+        // GIVEN a registration SAR without Serving-Node
+        final var request = buildSar(
+            KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
+            SERVER_ASSIGNMENT_REGISTRATION, ANY_SCSCF, null, null);
+
+        when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
+        when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
+        when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());
+        when(imsService.createUserData(KNOWN_PRIVATE_IDENTITY, KNOWN_MSISDN)).thenReturn("any-user-data");
+
+        // WHEN
+        final var answer = underTest.handle(request).join();
+
+        // THEN
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_SUCCESS);
+        verify(imsService, never()).setIpSmGw(any(), any(), any());
+    }
+
+    @Test
+    void itClearsIpSmGwOnMatchingDeregistration() throws Exception {
+        // GIVEN a deregistration SAR from the currently assigned S-CSCF
+        final var request = buildSar(
+            KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
+            SERVER_ASSIGNMENT_USER_DEREGISTRATION, ANY_SCSCF, null);
+
+        when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
+        when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
+        when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.of(ANY_SCSCF));
+
+        // WHEN
+        final var answer = underTest.handle(request).join();
+
+        // THEN
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_SUCCESS);
+        verify(imsService).clearScscf(KNOWN_IMSI);
+        verify(imsService).clearIpSmGw(KNOWN_IMSI);
+    }
+
+    @Test
+    void itKeepsIpSmGwOnScscfMismatch() throws Exception {
+        // GIVEN a deregistration SAR from an S-CSCF that is not the currently assigned one
+        final var request = buildSar(
+            KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
+            SERVER_ASSIGNMENT_USER_DEREGISTRATION, "other-scscf", null);
+
+        when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
+        when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
+        when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.of(ANY_SCSCF));
+
+        // WHEN
+        final var answer = underTest.handle(request).join();
+
+        // THEN
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_SUCCESS);
+        verify(imsService, never()).clearScscf(any());
+        verify(imsService, never()).clearIpSmGw(any());
     }
 }

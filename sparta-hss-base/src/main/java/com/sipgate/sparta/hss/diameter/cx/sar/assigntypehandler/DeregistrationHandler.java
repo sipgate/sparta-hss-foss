@@ -29,6 +29,7 @@ public class DeregistrationHandler extends ServerAssignTypeHandler {
         // so only clear the assignment if it actually matches.
         if (maybeExistingScscf.isPresent() && maybeExistingScscf.get().equals(request.getServerName())) {
             imsService.clearScscf(imsi);
+            imsService.clearIpSmGw(imsi);
         }
 
         eventPublisher.publish(ScscfAssignmentChanged.ofUnregister(imsi));

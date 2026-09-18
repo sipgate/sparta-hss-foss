@@ -3,6 +3,7 @@ package com.sipgate.sparta.hss.diameter.cx.sar.service;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
+import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import com.sipgate.sparta.hss.persistence.entities.ImsiScscf;
 import com.sipgate.sparta.hss.ims.ImsSubscription;
 import java.io.ByteArrayInputStream;
@@ -23,17 +24,19 @@ import org.slf4j.LoggerFactory;
 public class ImsService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ImsService.class);
-
     private final ImsiScscfDao imsiScscfDao;
+    private final LocationIpSmGwDao locationIpSmGwDao;
     private final Marshaller marshaller;
     private final Unmarshaller unmarshaller;
     private final String xmlTemplate;
 
     public ImsService(
             final ImsiScscfDao imsiScscfDao,
+            final LocationIpSmGwDao locationIpSmGwDao,
             final String userProfilePath)
             throws JAXBException, IOException {
         this.imsiScscfDao = imsiScscfDao;
+        this.locationIpSmGwDao = locationIpSmGwDao;
         final var context = JAXBContext.newInstance(ImsSubscription.class);
         marshaller = context.createMarshaller();
         unmarshaller = context.createUnmarshaller();
@@ -79,5 +82,13 @@ public class ImsService {
 
     public void clearScscf(final String imsi) {
         imsiScscfDao.clearScscf(imsi);
+    }
+
+    public void setIpSmGw(final String imsi, final String ipSmGwName, final String ipSmGwRealm) {
+        locationIpSmGwDao.store(imsi, ipSmGwName, ipSmGwRealm);
+    }
+
+    public void clearIpSmGw(final String imsi) {
+        locationIpSmGwDao.clearIpSmGw(imsi);
     }
 }

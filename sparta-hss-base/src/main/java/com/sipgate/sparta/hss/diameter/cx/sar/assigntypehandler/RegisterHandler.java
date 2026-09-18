@@ -5,6 +5,8 @@ import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentAnswer;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentRequest;
 import com.sipgate.sparta.diameter.base.core.DiameterConstants;
 import com.sipgate.sparta.diameter.base.core.DiameterMessageFactory;
+import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
+import com.sipgate.sparta.hss.diameter.common.ServingNodeInfo;
 import com.sipgate.sparta.hss.diameter.cx.sar.identity.PublicIdentity;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
 import com.sipgate.sparta.hss.diameter.cx.sar.ScscfAssignmentChanged;
@@ -26,11 +28,12 @@ public class RegisterHandler extends ServerAssignTypeHandler {
     }
 
     @Override
-    public ServerAssignmentAnswer.Out handle(final ServerAssignmentRequest.In request, final PublicIdentity identity) {
+    public ServerAssignmentAnswer.Out handle(final ServerAssignmentRequest.In request, final PublicIdentity identity) throws DiameterErrorAnswerException {
         final var imsi = getImsiFromRequest(request);
         final var maybeRegisteredScscf = imsService.getScscf(imsi);
-        final var answer = DiameterMessageFactory.createAnswer(request, DiameterConstants.RES_DIAMETER_SUCCESS);
         final var scscf = request.getServerName();
+
+        final var answer = DiameterMessageFactory.createAnswer(request, DiameterConstants.RES_DIAMETER_SUCCESS);
 
         if (maybeRegisteredScscf.isPresent() && !Objects.equals(maybeRegisteredScscf.get(), scscf)) {
             LOGGER.warn("Identity {} is already registered with a different scscf: {}. Allowing anyway.", imsi, maybeRegisteredScscf.get());
@@ -43,6 +46,12 @@ public class RegisterHandler extends ServerAssignTypeHandler {
         if (userDataAlreadyAvailable != CxDxConstants.USER_DATA_ALREADY_AVAILABLE) {
             final var userData = imsService.createUserData(request.getUserName(), identity.getMsisdn());
             answer.setUserData(userData.getBytes());
+        }
+
+        // handling of SMS over IP: if Serving-Node AVPs are present, store them in DB.
+        final var servingNode = ServingNodeInfo.from(request);
+        if (servingNode != null) {
+            imsService.setIpSmGw(imsi, servingNode.ipSmGwName(), servingNode.ipSmGwRealm());
         }
 
         eventPublisher.publish(ScscfAssignmentChanged.ofRegister(imsi, scscf));

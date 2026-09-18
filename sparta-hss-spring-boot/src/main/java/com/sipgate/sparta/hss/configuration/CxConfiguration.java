@@ -11,6 +11,7 @@ import com.sipgate.sparta.hss.diameter.cx.sar.service.SimService;
 import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.ImsiDao;
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
+import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import com.sipgate.sparta.hss.persistence.MsisdnDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -33,8 +34,9 @@ public class CxConfiguration {
     @Bean
     public ImsService imsService(
         final ImsiScscfDao imsiScscfDao,
+        final LocationIpSmGwDao locationIpSmGwDao,
         @Value("${sipgate.ims.userProfile.path}") final String userProfilePath) throws JAXBException, IOException {
-        return new ImsService(imsiScscfDao, userProfilePath);
+        return new ImsService(imsiScscfDao, locationIpSmGwDao, userProfilePath);
     }
 
     @Bean
