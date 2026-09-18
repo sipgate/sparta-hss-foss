@@ -1,15 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-    xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    child.project.url.inherit.append.path="false">
 
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>com.sipgate</groupId>
     <artifactId>sparta-hss-foss-parent</artifactId>
     <name>sparta-hss-foss-parent</name>
+    <description>FOSS version of sipgate's sparta HSS</description>
+    <url>https://github.com/sipgate/sparta-hss-foss</url>
     <version>0.0.2-SNAPSHOT</version>
+
     <packaging>pom</packaging>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>takuto88</id>
+            <name>Lennart Rosam</name>
+            <email>rosam@sipgate.de</email>
+            <organization>sipgate GmbH</organization>
+            <organizationUrl>https://github.com/sipgate</organizationUrl>
+        </developer>
+        <developer>
+            <name>Sven Uhlig</name>
+            <email>uhlig@sipgate.de</email>
+            <organization>sipgate GmbH</organization>
+            <organizationUrl>https://github.com/sipgate</organizationUrl>
+        </developer>
+        <developer>
+            <name>Torsten Will</name>
+            <email>will@sipgate.de</email>
+            <organization>sipgate GmbH</organization>
+            <organizationUrl>https://github.com/sipgate</organizationUrl>
+        </developer>
+        <developer>
+            <name>Jannik Volkland</name>
+            <email>volkland@sipgate.de</email>
+            <organization>sipgate GmbH</organization>
+            <organizationUrl>https://github.com/sipgate</organizationUrl>
+        </developer>
+        <developer>
+            <name>Nick Garczorz</name>
+            <email>garczorz@sipgate.de</email>
+            <organization>sipgate GmbH</organization>
+            <organizationUrl>https://github.com/sipgate</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm child.scm.url.inherit.append.path="false"
+         child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false">
+        <url>https://github.com/sipgate/sparta-hss-foss</url>
+        <connection>scm:git:git@github.com:sipgate/sparta-hss-foss.git</connection>
+        <developerConnection>scm:git:git@github.com:sipgate/sparta-hss-foss.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>sparta-hss-base</module>
@@ -24,7 +77,7 @@
         <excludedGroups>spring-test</excludedGroups>
 
         <!-- our own libs -->
-        <sparta-diameter.version>0.1.14-SNAPSHOT</sparta-diameter.version>
+        <sparta-diameter.version>0.1.13</sparta-diameter.version>
 
         <!-- shared third-party versions -->
         <micrometer.version>1.16.5</micrometer.version>
@@ -92,6 +145,74 @@
         </dependencies>
     </dependencyManagement>
 
+    <profiles>
+        <profile>
+            <id>deploy</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.4.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.12.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <doclint>none</doclint>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <bestPractices>true</bestPractices>
+                            <signer>bc</signer>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -114,6 +235,17 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
 </project>

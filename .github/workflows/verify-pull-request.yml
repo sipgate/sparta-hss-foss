@@ -1,0 +1,38 @@
+name: Verify Pull Request
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "25"
+          cache: maven
+      - name: Build and Test
+        run: ./mvnw -B clean verify
+
+  check-publishable:
+    # Exercise the deploy profile so javadoc and sources breakage surfaces here,
+    # not when a release tag is pushed. Tests already ran in check-pr, and
+    # signing needs a key, so both stay off (gpg binds to verify, which
+    # package never reaches).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "25"
+          cache: maven
+      - name: Build sources and javadoc jars
+        run: ./mvnw -B -P deploy clean package -DskipTests
