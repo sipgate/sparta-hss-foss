@@ -11,6 +11,8 @@ on:
       - "pom.xml"
       - "**/pom.xml"
       - "Dockerfile"
+      - "docker/**"
+      - ".github/workflows/docker-image.yml"
   workflow_dispatch:
 
 jobs:
