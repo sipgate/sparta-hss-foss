@@ -25,6 +25,8 @@ concurrency:
 
 jobs:
   docker:
+    # TEMPORARY: publishing is on hold; delete this line to resume.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
