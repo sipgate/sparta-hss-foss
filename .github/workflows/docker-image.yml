@@ -11,6 +11,7 @@ on:
       - "pom.xml"
       - "**/pom.xml"
       - "Dockerfile"
+      - ".dockerignore"
       - "docker/**"
       - ".github/workflows/docker-image.yml"
   workflow_dispatch:
