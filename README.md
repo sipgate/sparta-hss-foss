@@ -1,5 +1,51 @@
 # sparta-hss
 
+## Running via Docker
+
+Images are published to [`sipgategmbh/sparta-hss-foss`](https://hub.docker.com/r/sipgategmbh/sparta-hss-foss)
+for `linux/amd64` and `linux/arm64`. Releases are tagged `:<version>`, `:latest` follows the most recent
+release, and every build of `main` is published as `:<version>-SNAPSHOT`.
+
+The Diameter peer configuration has no usable default. Left unset, the container still starts and serves
+`/health/live`, but the placeholders reach the Diameter node verbatim, so it never connects to a peer and
+`/health/ready` stays `DOWN`. Set all of these:
+
+| Environment variable              | Maps to                          | Example             |
+|-----------------------------------|----------------------------------|---------------------|
+| `SIPGATE_DIAMETER_ORIGIN_HOST`    | `sipgate.diameter.origin-host`   | `hss.example.com`   |
+| `SIPGATE_DIAMETER_ORIGIN_REALM`   | `sipgate.diameter.origin-realm`  | `example.com`       |
+| `SIPGATE_DIAMETER_PEERS_0_HOST`   | `sipgate.diameter.peers[0].host` | `dra.example.com`   |
+| `SIPGATE_DIAMETER_PEERS_0_PORT`   | `sipgate.diameter.peers[0].port` | `3868` (the default)|
+
+Any other property from `application.yaml` can be overridden the same way, for example
+`SIPGATE_DIAMETER_CAPABILITIES=Cx/Dx,S6a/S6d` to load only those interfaces.
+
+```shell
+docker run \
+  -e SIPGATE_DIAMETER_ORIGIN_HOST=hss.example.com \
+  -e SIPGATE_DIAMETER_ORIGIN_REALM=example.com \
+  -e SIPGATE_DIAMETER_PEERS_0_HOST=dra.example.com \
+  -p 8080:8080 \
+  -v sparta-hss-data:/var/lib/sparta-hss \
+  sipgategmbh/sparta-hss-foss:latest
+```
+
+The subscriber-facing defaults live in `/usr/local/etc/sparta-hss`, so one mount replaces all of them:
+
+* `user-profile.xml` — the Cx user-profile template (`{privateId}` and `{msisdn}` are substituted per
+  request). The shipped one declares no application server.
+* `imsiProfiles/` — the S6a subscription-data profiles; `default.xml` is used for any subscriber without
+  a more specific [profile assignment](#subscriber-profiles).
+
+Copy `docker/config` from this repository as a starting point and mount it with
+`-v ./config:/usr/local/etc/sparta-hss:ro`. A directory mounted there replaces the shipped defaults
+entirely, so it must contain both entries.
+
+`/var/lib/sparta-hss` holds the zero-setup SQLite database and is the only writable path: without a volume
+there, all S-CSCF bindings and subscriber state are lost with the container. For production traffic point
+`SPRING_DATASOURCE_URL` at a client/server database instead. The process runs as uid 10001, so a bind mount
+must be writable by that user.
+
 ## HTTP interface
 
 The list of available endpoints is:
