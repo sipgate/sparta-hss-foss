@@ -12,7 +12,8 @@ RUN mvn -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 COPY sparta-hss-base /usr/src/build/sparta-hss-base
 COPY sparta-hss-spring-boot /usr/src/build/sparta-hss-spring-boot
 ARG MVN_ADDITIONAL_ARGS
-RUN mvn -B clean package dependency:copy-dependencies -DincludeScope=runtime $MVN_ADDITIONAL_ARGS
+RUN mvn -B clean package dependency:copy-dependencies -DincludeScope=runtime \
+        -DexcludeArtifactIds=spring-boot-devtools $MVN_ADDITIONAL_ARGS
 
 #############################################################
 
