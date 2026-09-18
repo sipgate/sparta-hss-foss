@@ -29,6 +29,13 @@ COPY --from=build /usr/src/build/sparta-hss-spring-boot/target/dependency/ /app/
 COPY docker/user-profile.xml /app/user-profile.xml
 COPY docker/imsiProfiles /app/imsiProfiles
 
+RUN useradd --system --uid 10001 --user-group --no-create-home sparta \
+    && mkdir -p /var/lib/sparta-hss \
+    && chown sparta:sparta /var/lib/sparta-hss
+ENV SPRING_DATASOURCE_URL="jdbc:sqlite:/var/lib/sparta-hss/sparta-hss.db"
+VOLUME /var/lib/sparta-hss
+USER sparta
+
 # HTTP/management endpoints; Diameter connects outbound to its configured peers
 EXPOSE 8080
 
