@@ -22,8 +22,12 @@ jobs:
         id: version
         run: |
           TAG=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
-          echo "Using tag $TAG"
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          TAGS="sipgategmbh/sparta-hss-foss:$TAG"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAGS="$TAGS,sipgategmbh/sparta-hss-foss:latest"
+          fi
+          echo "Publishing $TAGS"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -38,7 +42,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: "sipgategmbh/sparta-hss-foss:latest,sipgategmbh/sparta-hss-foss:${{ steps.version.outputs.tag }}"
+          tags: ${{ steps.version.outputs.tags }}
       - name: Docker Hub Description
         uses: peter-evans/dockerhub-description@v4
         with:
