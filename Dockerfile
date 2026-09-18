@@ -6,7 +6,7 @@ COPY pom.xml /usr/src/build
 COPY sparta-hss-base/pom.xml /usr/src/build/sparta-hss-base/pom.xml
 COPY sparta-hss-spring-boot/pom.xml /usr/src/build/sparta-hss-spring-boot/pom.xml
 WORKDIR /usr/src/build
-RUN mvn -B de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
+RUN mvn -B de.qaware.maven:go-offline-maven-plugin:1.2.8:resolve-dependencies
 
 # compile the jars and collect the runtime classpath
 COPY sparta-hss-base /usr/src/build/sparta-hss-base
