@@ -36,3 +36,11 @@ jobs:
           cache: maven
       - name: Build sources and javadoc jars
         run: ./mvnw -B -P deploy clean package -DskipTests
+
+  check-docker:
+    # Keep the Docker image buildable; publishing itself only happens on main.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build docker image
+        run: docker build -t sparta-hss-foss:verify-pr .
