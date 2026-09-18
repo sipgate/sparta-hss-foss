@@ -77,7 +77,7 @@
         <excludedGroups>spring-test</excludedGroups>
 
         <!-- our own libs -->
-        <sparta-diameter.version>0.1.14-SNAPSHOT</sparta-diameter.version>
+        <sparta-diameter.version>0.1.13</sparta-diameter.version>
 
         <!-- shared third-party versions -->
         <micrometer.version>1.16.5</micrometer.version>
