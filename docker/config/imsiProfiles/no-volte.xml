@@ -1,0 +1,29 @@
+<SubscriptionData vendor="10415">
+    <SubscriberStatus vendor="10415">serviceGranted</SubscriberStatus>
+    <MSISDN vendor="10415">will-be-replaced-by-hss</MSISDN>
+    <AMBR vendor="10415">
+        <MaxRequestedBandwithUL vendor="10415">32000000</MaxRequestedBandwithUL>
+        <MaxRequestedBandwithDL vendor="10415">50000000</MaxRequestedBandwithDL>
+    </AMBR>
+    <APNConfigurationProfile vendor="10415">
+        <ContextIdentifier vendor="10415">1</ContextIdentifier>
+        <AllAPNConfigIncluded vendor="10415">yes</AllAPNConfigIncluded>
+        <APNConfiguration vendor="10415">
+            <ContextIdentifier vendor="10415">1</ContextIdentifier>
+            <PDNType vendor="10415">ipv4</PDNType>
+            <ServiceSelection>internet</ServiceSelection>
+            <EpsSubscribedQosProfile vendor="10415">
+                <QosClassIdentifier vendor="10415">9</QosClassIdentifier>
+                <AllocationRetentionPriority vendor="10415">
+                    <PriorityLevel vendor="10415">2</PriorityLevel>
+                    <PreemptionCapability vendor="10415">no</PreemptionCapability>
+                    <PreemptionVulnerability vendor="10415">yes</PreemptionVulnerability>
+                </AllocationRetentionPriority>
+            </EpsSubscribedQosProfile>
+            <AMBR vendor="10415">
+                <MaxRequestedBandwithUL vendor="10415">32000000</MaxRequestedBandwithUL>
+                <MaxRequestedBandwithDL vendor="10415">50000000</MaxRequestedBandwithDL>
+            </AMBR>
+        </APNConfiguration>
+    </APNConfigurationProfile>
+</SubscriptionData>

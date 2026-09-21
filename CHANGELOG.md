@@ -21,5 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker image with multi-arch (amd64/arm64) support, an unprivileged runtime
   user, persistent data volume at `/var/lib/sparta-hss` and overridable
   default Cx/S6a profiles under `/usr/local/etc/sparta-hss`.
+- Containerized E2E test suite (`make run-e2e-tests`): a Diameter test agent
+  drives the containerized HSS against a seeded SQLite database, covering Cx
+  (SAR, MAR, RTR), S6a (AIR, ULR, ISD, NOR, PUR) and harness connectivity.
+  Individual cases run via `make run-e2e-single TEST=...`.
 
 [unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...HEAD

@@ -1,0 +1,69 @@
+# E2E test stack: the HSS image under test, a seeded SQLite database and a
+# Diameter test agent. Run via `make run-e2e-tests`.
+
+services:
+    seed-db:
+        image: python:3.13-alpine
+        volumes:
+            - sparta-hss-data:/var/lib/sparta-hss
+            - ./docker/e2e/seed.sql:/seed.sql:ro
+        # In-place re-seed (never replaces the file) and chown for the
+        # uid-10001 runtime user; WAL because the tests write concurrently.
+        entrypoint: ["python", "-c", "import os, sqlite3; d = '/var/lib/sparta-hss'; os.makedirs(d, exist_ok=True); p = d + '/sparta-hss.db'; con = sqlite3.connect(p); con.execute('PRAGMA journal_mode=WAL'); con.executescript(open('/seed.sql').read()); con.close(); [os.chown(os.path.join(d, n), 10001, 10001) for n in os.listdir(d)]; os.chown(d, 10001, 10001)"]
+        restart: "no"
+
+    hss:
+        image: sparta-hss-foss:e2e
+        build:
+            context: .
+            # unit tests run in the e2e-tests container, not in the image build
+            args:
+                MVN_ADDITIONAL_ARGS: -DskipTests
+        depends_on:
+            seed-db:
+                condition: service_completed_successfully
+        environment:
+            SIPGATE_DIAMETER_ORIGIN_HOST: hss.e2e.epc.mnc001.mcc001.3gppnetwork.org
+            SIPGATE_DIAMETER_ORIGIN_REALM: epc.mnc001.mcc001.3gppnetwork.org
+            SIPGATE_DIAMETER_PEERS_0_HOST: e2e-tests
+            SIPGATE_DIAMETER_PEERS_0_PORT: "3869"
+            SIPGATE_DIAMETER_RECONNECT_DELAY: PT2S
+            SIPGATE_HTTP_PROFILE_ENABLED: "true"
+            # the seed carries raw OP, not pre-computed OPc
+            SIPGATE_AUC_STORED_KEY_FORMAT: op
+            SPRING_JPA_HIBERNATE_DDL_AUTO: none
+            # tests and HSS write the same file: queue, do not fail
+            SPRING_DATASOURCE_URL: "jdbc:sqlite:/var/lib/sparta-hss/sparta-hss.db?journal_mode=wal&busy_timeout=10000"
+        healthcheck:
+            # liveness only: /health/ready would wait for the e2e-tests peer
+            # which waits for this check
+            test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q '200'"]
+            start_period: 30s
+            interval: 5s
+            timeout: 3s
+            retries: 30
+        volumes:
+            - sparta-hss-data:/var/lib/sparta-hss
+
+    e2e-tests:
+        image: maven:3.9.11-eclipse-temurin-25
+        depends_on:
+            hss:
+                condition: service_healthy
+        working_dir: /workspace
+        environment:
+            # pass-through + $$ escaping: a value containing '$' would be
+            # expanded twice (by compose, then by bash) otherwise
+            - SINGLE_TEST
+        volumes:
+            - ./:/workspace
+            - maven-cache:/root/.m2
+            - sparta-hss-data:/var/lib/sparta-hss
+        # clean: the workspace is shared with local builds, and stale test
+        # resources (e.g. a removed service file) would break the run
+        entrypoint: ["bash", "-c", "mvn -B clean -DexcludedGroups= -Dgroups=E2E -Dsurefire.failIfNoSpecifiedTests=false test ${SINGLE_TEST:+-Dtest=$$SINGLE_TEST}"]
+        restart: "no"
+
+volumes:
+    sparta-hss-data:
+    maven-cache:
