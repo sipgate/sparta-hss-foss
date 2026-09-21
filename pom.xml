@@ -113,6 +113,11 @@
                 <artifactId>sparta-diameter-3gpp-swx</artifactId>
                 <version>${sparta-diameter.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.sipgate</groupId>
+                <artifactId>sparta-diameter-3gpp-rx</artifactId>
+                <version>${sparta-diameter.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>jakarta.xml.bind</groupId>

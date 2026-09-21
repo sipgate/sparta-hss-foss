@@ -48,6 +48,10 @@
             <groupId>com.sipgate</groupId>
             <artifactId>sparta-diameter-3gpp-swx</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.sipgate</groupId>
+            <artifactId>sparta-diameter-3gpp-rx</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.hibernate.orm</groupId>
