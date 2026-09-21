@@ -2,11 +2,6 @@
 
 ## Running via Docker
 
-> **Note:** the image is **not published to Docker Hub yet**. Publishing is
-> being finalized and the repository will be available in the coming weeks.
-> Until then, build it yourself: `docker build -t sparta-hss-foss .` and run
-> your local build as described below.
-
 Images are published to [`sipgategmbh/sparta-hss-foss`](https://hub.docker.com/r/sipgategmbh/sparta-hss-foss)
 for `linux/amd64` and `linux/arm64`. Releases are tagged `:<version>`, `:latest` follows the most recent
 release, and every build of `main` is published as `:<version>-SNAPSHOT`.
