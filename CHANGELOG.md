@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-22
+
 ### Added
 
 - Open-source release of sipgate's HSS as two modules: `sparta-hss-base`
@@ -26,4 +28,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (SAR, MAR, RTR), S6a (AIR, ULR, ISD, NOR, PUR) and harness connectivity.
   Individual cases run via `make run-e2e-single TEST=...`.
 
-[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...HEAD
+[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...1.0.0
