@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- README: full effective-profile decision table (per-ULR matrix
+  and summary view) for `imsi_profile`/`tac_profile` assignments.
+
 ## [1.0.0] - 2026-09-22
 
 ### Added

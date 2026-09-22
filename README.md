@@ -139,6 +139,25 @@ following rules, for example:
 
 TL;DR: The value in `imsi_profile` takes precedence over `tac_profile`.
 
+| ULR.imsi | ULR.tac | imsi_profile | tac_profile | effective_p. | reason | Explanation                                                       |
+|----------|---------|--------------|-------------|--------------|--------|-------------------------------------------------------------------|
+| 1        | a       | (null)       | (null)      | default      | NONE   | Whatever default means: VoLTE or no VoLTE                         |
+| 1        | b       | (null)       | volte       | volte        | TAC    | Allow known good TAC "b"                                          |
+| 1        | c       | (null)       | no-volte    | no-volte     | TAC    | Block broken TAC "d"                                              |
+| 2        | a       | volte        | (null)      | volte        | IMSI   | Allow beta IMSI "2"                                               |
+| 2        | b       | volte        | volte       | volte        | IMSI   |                                                                   |
+| 2        | c       | volte        | no-volte    | volte        | IMSI   | Allow beta IMSI "2" even when TAC is broken, to allow testing     |
+| 3        | a       | no-volte     | (null)      | no-volte     | IMSI   | Block IMSI "3" from unhappy customer                              |
+| 3        | b       | no-volte     | volte       | no-volte     | IMSI   | Block IMSI "3" from unhappy customer, even when TAC is known good |
+| 3        | c       | no-volte     | no-volte    | no-volte     | IMSI   |                                                                   |
+
+alternate view:
+
+| ↓ imsi-p \ tac-p → | (null)    | other-thing |
+|--------------------|-----------|-------------|
+| **(null)**         | default   | other-thing |
+| **something**      | something | something   |
+
 
 ## Local development
 
