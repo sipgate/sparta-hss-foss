@@ -161,3 +161,8 @@ grouped by application (`s6a`, `cx`) and command.
 4. Write tests against the handler (see the existing handler tests for the encode/decode test setup).
 
 
+## Releasing
+
+New versions are cut by maintainers from a GitHub Actions workflow — see [RELEASING.md](RELEASING.md).
+
+
