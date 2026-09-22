@@ -22,10 +22,6 @@ jobs:
         run: ./mvnw -B clean verify
 
   check-publishable:
-    # Exercise the deploy profile so javadoc and sources breakage surfaces here,
-    # not when a release tag is pushed. Tests already ran in check-pr, and
-    # signing needs a key, so both stay off (gpg binds to verify, which
-    # package never reaches).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -38,7 +34,6 @@ jobs:
         run: ./mvnw -B -P deploy clean package -DskipTests
 
   check-docker:
-    # Keep the Docker image buildable; publishing itself only happens on main.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -46,8 +41,6 @@ jobs:
         run: docker build --build-arg MVN_ADDITIONAL_ARGS=-DskipTests -t sparta-hss-foss:verify-pr .
 
   check-e2e:
-    # Run the E2E suite: the containerized HSS is the unit under test, the
-    # Diameter test agent in the runner container drives it.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
