@@ -10,7 +10,7 @@
     <name>sparta-hss-foss-parent</name>
     <description>FOSS version of sipgate's sparta HSS</description>
     <url>https://github.com/sipgate/sparta-hss-foss</url>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 

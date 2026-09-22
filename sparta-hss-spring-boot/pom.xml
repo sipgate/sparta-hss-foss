@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.sipgate</groupId>
         <artifactId>sparta-hss-foss-parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>sparta-hss-spring-boot</artifactId>
