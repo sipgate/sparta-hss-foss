@@ -29,7 +29,18 @@ jobs:
           server-id: central
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
+      - name: Guard
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(./mvnw -B -q help:evaluate -Dexpression=project.version -DforceStdout | tail -n1)"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$version" != *-SNAPSHOT ]]; then
+            echo "::notice::pom is at $version, a release; publish-release.yml handles this"
+          fi
+
       - name: Build, Test, Sign and Deploy Snapshot to Maven Central
+        if: endsWith(steps.version.outputs.value, '-SNAPSHOT')
         env:
           MAVEN_GPG_KEY: ${{ secrets.MAVEN_GPG_KEY }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}

@@ -1,0 +1,114 @@
+name: "Release: cut a new version"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Version to release, e.g. 1.1.0"
+        required: true
+        type: string
+      development_version:
+        description: "Version main continues on afterwards, e.g. 1.1.1-SNAPSHOT"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maven-central-publish
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "25"
+          cache: maven
+
+      - name: Guard
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          DEVELOPMENT_VERSION: ${{ inputs.development_version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_NAME" != "main" ]]; then
+            echo "::error::release must be dispatched from main, got $GITHUB_REF_NAME"
+            exit 1
+          fi
+          if ! [[ "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::release_version must be major.minor.patch without leading zeros"
+            exit 1
+          fi
+          if ! [[ "$DEVELOPMENT_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-SNAPSHOT$ ]]; then
+            echo "::error::development_version must be major.minor.patch-SNAPSHOT"
+            exit 1
+          fi
+          if [[ "$DEVELOPMENT_VERSION" == "$RELEASE_VERSION-SNAPSHOT" ]]; then
+            echo "::error::development_version must move past $RELEASE_VERSION"
+            exit 1
+          fi
+          current="$(./mvnw -B -q help:evaluate -Dexpression=project.version -DforceStdout | tail -n1)"
+          if [[ "$current" != *-SNAPSHOT ]]; then
+            echo "::error::main is at $current, which is not a snapshot"
+            exit 1
+          fi
+          if git rev-parse --verify "refs/tags/$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "::error::tag $RELEASE_VERSION already exists"
+            exit 1
+          fi
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
+      - name: Move the changelog
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: python3 .github/release-changelog.py "$RELEASE_VERSION"
+
+      - name: Set the release version
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: ./mvnw -B versions:set -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false
+
+      - name: Commit and tag
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- CHANGELOG.md '*pom.xml'
+          git commit -m "chore: release $RELEASE_VERSION"
+          git tag -a "$RELEASE_VERSION" -m "Release $RELEASE_VERSION"
+
+      - name: Push the release commit and tag
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: git push --atomic origin HEAD:main "refs/tags/$RELEASE_VERSION"
+
+      - name: Bump to the next development snapshot
+        env:
+          DEVELOPMENT_VERSION: ${{ inputs.development_version }}
+        run: |
+          set -euo pipefail
+          ./mvnw -B versions:set -DnewVersion="$DEVELOPMENT_VERSION" -DgenerateBackupPoms=false
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- '*pom.xml'
+          git commit -m "chore: bump to $DEVELOPMENT_VERSION"
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            echo "::notice::push rejected, rebasing onto main (attempt $attempt)"
+            git pull --rebase origin main
+          done
+          exit 1
