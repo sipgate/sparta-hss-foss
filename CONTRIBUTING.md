@@ -42,6 +42,21 @@ Open the pull request against `main`. CI runs the checks defined in
 build plus a `-P deploy` build that produces the sources and javadoc jars — all must pass.
 Describe what changed and why.
 
+## AI policy
+
+AI contributions are welcome as long as a human reviews them:
+
+- You are responsible for your contribution — not the AI.
+- Do not submit code or features you do not understand. You must be able to
+  explain and defend every part of it.
+- In pull requests, we want to talk to you, not to your LLM. Using an LLM for
+  translation help is fine; copying our feedback into an LLM and pasting its
+  output back to us is not.
+- When an AI opens a pull request for you, review the description once the pull
+  request is up and correct it there — you are the one who stands behind it.
+- When an AI files an issue for you, review the body the same way once the issue
+  is there. An issue nobody checked costs a maintainer more time than it saves.
+
 ## Reporting bugs
 
 Please do not file security issues as public issues — see [SECURITY.md](SECURITY.md).
