@@ -1,0 +1,61 @@
+site_name: sparta-hss
+site_description: FOSS version of sipgate's Home Subscriber Server
+site_url: https://sipgate.github.io/sparta-hss-foss/
+repo_name: sipgate/sparta-hss-foss
+repo_url: https://github.com/sipgate/sparta-hss-foss
+docs_dir: .
+site_dir: ../site
+
+theme:
+  name: material
+  edit_uri: edit/main/docs/
+  features:
+    - navigation.sections
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: blue
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: blue
+
+markdown_extensions:
+  - admonition
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Overview: index.md
+  - Getting started:
+      - Quickstart: getting-started/quickstart.md
+      - Deployment: getting-started/deployment.md
+      - Diameter setup: getting-started/diameter-setup.md
+  - Concepts:
+      - Authentication: concepts/authentication.md
+      - Subscriber profiles: concepts/profiles.md
+      - Roaming: concepts/roaming.md
+  - Reference:
+      - Configuration: reference/configuration.md
+      - HTTP API: reference/http-api.md
+      - Metrics: reference/metrics.md
+      - Database: reference/database.md
+      - XML profiles: reference/xml-profiles.md
+      - Diameter interfaces: reference/diameter-interfaces.md
+  - Guides:
+      - Profile management: guides/profile-management.md
+      - Roaming management: guides/roaming-management.md
+      - Monitoring: guides/monitoring.md
+  - Development:
+      - Architecture: development/architecture.md
+      - Local development: development/local-development.md
+      - Extending the core: development/extending.md
+      - New Diameter commands: development/new-diameter-command.md
+      - Testing: development/testing.md
+  - Community:
+      - Contributing and releases: community.md
