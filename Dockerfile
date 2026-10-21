@@ -18,6 +18,17 @@ RUN mvn -B clean package dependency:copy-dependencies -DincludeScope=runtime \
 #############################################################
 
 FROM eclipse-temurin:25-jre
+
+# Distrust the compromised emSign ECC Root CA - G3 and Comodo AAA Services roots (eMudhra intermediate CA compromise,
+# 2026-10) in the system trust store and in the JDK's bundled cacerts. See https://emudhra.we-have-a-problem.com/#linux
+RUN set -eu \
+ && sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf \
+ && update-ca-certificates \
+ && cacerts="$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")/lib/security/cacerts" \
+ && keytool -list -v -keystore "$cacerts" -storepass changeit \
+      | awk '/^Alias name: /{alias=substr($0,13)} /^Owner: .*CN=(AAA Certificate Services|emSign ECC Root CA - G3)(,|$)/{print alias}' \
+      | while read -r alias; do keytool -delete -alias "$alias" -keystore "$cacerts" -storepass changeit; done \
+ && ! keytool -list -v -keystore "$cacerts" -storepass changeit | grep -qE '^Owner: .*CN=(AAA Certificate Services|emSign ECC Root CA - G3)(,|$)'
 RUN mkdir -p /app/lib
 WORKDIR /app
 COPY --from=build /usr/src/build/sparta-hss-spring-boot/target/sparta-hss-spring-boot.jar /app/sparta-hss.jar
