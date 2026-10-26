@@ -20,6 +20,7 @@ public class Sim implements Serializable {
     private byte[] op;
     private Set<Imsi> imsis;
     private String iccid;
+    private boolean isActive;
 
     public Sim() {
     }
@@ -34,11 +35,11 @@ public class Sim implements Serializable {
 
     public Sim(final Msisdn msisdn, final String activeMainImsi, final byte[] secretKey, final Long sqn) {
         this.msisdn = msisdn;
+        this.isActive = true;
 
         final Set<Imsi> imsis = new HashSet<>();
         final var imsi = new Imsi();
         imsi.setType(Imsi.ImsiType.main);
-        imsi.setState(Imsi.ImsiState.active);
         imsi.setImsi(activeMainImsi);
         imsis.add(imsi);
         this.imsis = imsis;
@@ -124,5 +125,14 @@ public class Sim implements Serializable {
 
     public void setIccid(final String iccid) {
         this.iccid = iccid;
+    }
+
+    @Column(name = "isActive", nullable = false)
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(final boolean isActive) {
+        this.isActive = isActive;
     }
 }

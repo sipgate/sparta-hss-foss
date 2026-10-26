@@ -2,7 +2,6 @@ package com.sipgate.sparta.hss.diameter.common;
 
 import com.sipgate.sparta.diameter.base.session.DiameterNodeConfig;
 import com.sipgate.sparta.hss.persistence.entities.Imsi;
-import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiState;
 import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiType;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
 import java.net.InetAddress;
@@ -38,7 +37,6 @@ public class Factory {
         final var imsi = new Imsi();
         imsi.setImsi("999990000104857");
         imsi.setType(ImsiType.main);
-        imsi.setState(ImsiState.active);
         return imsi;
     }
 

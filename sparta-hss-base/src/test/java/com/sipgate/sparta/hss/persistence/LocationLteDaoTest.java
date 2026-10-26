@@ -46,6 +46,7 @@ class LocationLteDaoTest {
     entityManager.persist(msisdn);
 
     final var sim = new Sim();
+    sim.setActive(true);
     sim.setIccid("any-iccid");
     sim.setOp(new byte[1]);
     sim.setSecretKey(new byte[1]);
@@ -55,7 +56,6 @@ class LocationLteDaoTest {
 
     imsi = new Imsi();
     imsi.setImsi(ANY_IMSI);
-    imsi.setState(Imsi.ImsiState.active);
     imsi.setType(Imsi.ImsiType.main);
     imsi.setAssignedAt(new Date());
     imsi.setSim(sim);
@@ -223,7 +223,6 @@ class LocationLteDaoTest {
   private void persistImsi(final String imsiValue) {
     final var numericImsi = new Imsi();
     numericImsi.setImsi(imsiValue);
-    numericImsi.setState(Imsi.ImsiState.active);
     numericImsi.setType(Imsi.ImsiType.main);
     numericImsi.setAssignedAt(new Date());
     numericImsi.setSim(imsi.getSim());

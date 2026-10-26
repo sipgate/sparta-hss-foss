@@ -3,7 +3,6 @@ package com.sipgate.sparta.hss.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sipgate.sparta.hss.persistence.entities.Imsi;
-import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiState;
 import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
@@ -41,7 +40,6 @@ class ImsiDaoTest {
     // GIVEN
     final var imsi = new Imsi();
     imsi.setImsi(KNOWN_IMSI);
-    imsi.setState(ImsiState.active);
     imsi.setType(ImsiType.main);
     imsi.setAssignedAt(new Date());
     entityManager.persist(imsi);

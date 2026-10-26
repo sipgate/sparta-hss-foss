@@ -201,7 +201,6 @@ class EffectiveProfileDaoTest {
       final var imsi = new Imsi();
       imsi.setSim(sim);
       imsi.setImsi("imsi" + suffix);
-      imsi.setState(Imsi.ImsiState.active);
       imsi.setType(Imsi.ImsiType.main);
       imsi.setAssignedAt(new Date());
       entityManager.persist(imsi);

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS sim (
   op BLOB NOT NULL,
   ss_cw TEXT DEFAULT 'active',
   iccid CHAR(20) NOT NULL DEFAULT '',
+  isActive INTEGER NOT NULL CHECK (isActive IN (0, 1)),
   CONSTRAINT fk_sim_msisdn FOREIGN KEY (msisdn) REFERENCES msisdn (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -35,7 +36,6 @@ CREATE TABLE IF NOT EXISTS imsi (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   imsi CHAR(15) NOT NULL UNIQUE,
   simId INTEGER,
-  state TEXT NOT NULL DEFAULT 'inactive',
   type TEXT NOT NULL,
   assignedAt TIMESTAMP NULL DEFAULT NULL,
   CONSTRAINT fk_imsi_sim FOREIGN KEY (simId) REFERENCES sim (id) ON DELETE SET NULL ON UPDATE CASCADE
@@ -137,9 +137,9 @@ CREATE TABLE IF NOT EXISTS roaming_blocked_event (
 --   001010000000002: the ISD profile-change subscriber
 INSERT INTO msisdn (id, msisdn) VALUES (1, '4915790000001');
 INSERT INTO msisdn (id, msisdn) VALUES (2, '4915790000002');
-INSERT INTO sim (id, msisdn, secretKey, sqn, op, ss_cw, iccid)
-  VALUES (1, 1, x'000102030405060708090A0B0C0D0E0F', 0, x'0F0E0D0C0B0A09080706050403020100', 'active', '');
-INSERT INTO sim (id, msisdn, secretKey, sqn, op, ss_cw, iccid)
-  VALUES (2, 2, x'000102030405060708090A0B0C0D0E0F', 0, x'0F0E0D0C0B0A09080706050403020100', 'active', '');
-INSERT INTO imsi (id, imsi, simId, state, type) VALUES (1, '001010000000001', 1, 'active', 'main');
-INSERT INTO imsi (id, imsi, simId, state, type) VALUES (2, '001010000000002', 2, 'active', 'main');
+INSERT INTO sim (id, msisdn, secretKey, sqn, op, ss_cw, iccid, isActive)
+  VALUES (1, 1, x'000102030405060708090A0B0C0D0E0F', 0, x'0F0E0D0C0B0A09080706050403020100', 'active', '', 1);
+INSERT INTO sim (id, msisdn, secretKey, sqn, op, ss_cw, iccid, isActive)
+  VALUES (2, 2, x'000102030405060708090A0B0C0D0E0F', 0, x'0F0E0D0C0B0A09080706050403020100', 'active', '', 1);
+INSERT INTO imsi (id, imsi, simId, type) VALUES (1, '001010000000001', 1, 'main');
+INSERT INTO imsi (id, imsi, simId, type) VALUES (2, '001010000000002', 2, 'main');

@@ -16,7 +16,6 @@ public class Imsi implements Serializable {
     private int id;
     private String imsi;
     private Sim sim;
-    private ImsiState state;
     private ImsiType type;
     private Date assignedAt;
     private ImsiProfile imsiProfile;
@@ -65,16 +64,6 @@ public class Imsi implements Serializable {
         return this;
     }
 
-    @Column(name = "state", nullable = false)
-    @Enumerated(EnumType.STRING)
-    public ImsiState getState() {
-        return state;
-    }
-
-    public void setState(final ImsiState state) {
-        this.state = state;
-    }
-
     @Column(name = "type", nullable = false)
     @Enumerated(EnumType.STRING)
     public ImsiType getType() {
@@ -96,11 +85,7 @@ public class Imsi implements Serializable {
 
     @Override
     public String toString() {
-        return "[imsi=" + imsi + ", state=" + state + ", type=" + type + "]";
-    }
-
-    public enum ImsiState {
-        active
+        return "[imsi=" + imsi + ", type=" + type + "]";
     }
 
     public enum ImsiType {

@@ -39,7 +39,6 @@ class ImsiProfileDaoTest {
   private Imsi persistNewImsi(final String imsi) {
     final var entity = new Imsi();
     entity.setImsi(imsi);
-    entity.setState(Imsi.ImsiState.active);
     entity.setType(Imsi.ImsiType.main);
     entityManager.persist(entity);
     return entity;

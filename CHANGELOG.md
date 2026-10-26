@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - README: full effective-profile decision table (per-ULR matrix
   and summary view) for `imsi_profile`/`tac_profile` assignments.
+- Column `isActive` for SIM entities. Will be used for a new implementation of `EutranAccessPolicy` later. 
+
+### Removed
+
+- Unused column `state` for IMSI entities. Make sure your code does not use it.
 
 ## [1.0.0] - 2026-09-22
 

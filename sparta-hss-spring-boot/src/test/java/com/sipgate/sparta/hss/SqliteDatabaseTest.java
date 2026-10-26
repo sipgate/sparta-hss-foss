@@ -48,6 +48,7 @@ class SqliteDatabaseTest {
         entityManager.persist(msisdn);
 
         final var sim = new Sim();
+        sim.setActive(true);
         sim.setIccid("any-iccid");
         sim.setOp(new byte[16]);
         sim.setSecretKey(new byte[16]);
@@ -57,7 +58,6 @@ class SqliteDatabaseTest {
 
         final var imsi = new Imsi();
         imsi.setImsi("999990000000001");
-        imsi.setState(Imsi.ImsiState.active);
         imsi.setType(Imsi.ImsiType.main);
         imsi.setAssignedAt(new Date());
         imsi.setSim(sim);

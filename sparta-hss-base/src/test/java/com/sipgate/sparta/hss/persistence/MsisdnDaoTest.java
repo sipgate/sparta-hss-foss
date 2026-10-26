@@ -1,7 +1,6 @@
 package com.sipgate.sparta.hss.persistence;
 
 import com.sipgate.sparta.hss.persistence.entities.Imsi;
-import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiState;
 import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiType;
 import com.sipgate.sparta.hss.persistence.entities.Msisdn;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
@@ -59,6 +58,7 @@ public class MsisdnDaoTest {
     entityManager.persist(msisdn);
 
     final var sim = new Sim();
+    sim.setActive(true);
     sim.setMsisdn(msisdn);
     sim.setIccid("some-iccid");
     sim.setOp(new byte[1]);
@@ -68,7 +68,6 @@ public class MsisdnDaoTest {
     final var imsi = new Imsi();
     imsi.setImsi(KNOWN_IMSI);
     imsi.setType(ImsiType.main);
-    imsi.setState(ImsiState.active);
     imsi.setSim(sim);
     entityManager.persist(imsi);
 

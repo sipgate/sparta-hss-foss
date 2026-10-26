@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sipgate.sparta.hss.persistence.entities.Imsi;
-import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiState;
 import com.sipgate.sparta.hss.persistence.entities.Imsi.ImsiType;
 import com.sipgate.sparta.hss.persistence.entities.LocationIpSmGw;
 import jakarta.persistence.EntityTransaction;
@@ -40,7 +39,6 @@ class LocationIpSmGwDaoTest {
     transaction.begin();
     imsi = new Imsi();
     imsi.setImsi(ANY_IMSI);
-    imsi.setState(ImsiState.active);
     imsi.setType(ImsiType.main);
     imsi.setAssignedAt(new Date());
     entityManager.persist(imsi);

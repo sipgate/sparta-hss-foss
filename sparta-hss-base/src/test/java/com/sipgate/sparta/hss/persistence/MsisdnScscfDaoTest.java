@@ -41,6 +41,7 @@ class MsisdnScscfDaoTest {
         entityManager.persist(msisdn);
 
         final var sim = new Sim();
+        sim.setActive(true);
         sim.setMsisdn(msisdn);
         sim.setIccid(ANY_ICCID);
         sim.setOp(new byte[]{});
@@ -49,7 +50,6 @@ class MsisdnScscfDaoTest {
 
         imsi = new Imsi();
         imsi.setImsi(ANY_IMSI);
-        imsi.setState(Imsi.ImsiState.active);
         imsi.setType(Imsi.ImsiType.main);
         imsi.setAssignedAt(new Date());
         imsi.setSim(sim);
