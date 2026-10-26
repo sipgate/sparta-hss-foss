@@ -18,7 +18,6 @@ snake_case translation).
 | `id` | int, PK, auto | |
 | `imsi` | char(15), unique | The IMSI |
 | `simId` | int, FK → `sim.id` | The SIM, `NULL`-able |
-| `state` | enum | `inactive`, `pending`, `active`, `active_deprecated`, `obsolete` |
 | `type` | enum | `main` or `dyn` (dynamic) |
 | `assignedAt` | timestamp | |
 
@@ -40,6 +39,7 @@ snake_case translation).
 | `op` | binary(16) | OPc or OP, depending on [`sipgate.auc.stored-key-format`](configuration.md#authentication) |
 | `ss_cw` | enum | `active` / `inactive` |
 | `iccid` | char(20) | |
+| `isActive` | bit(1) | `b'0'` for inactive, `b'1'` for active |
 
 ## Profile assignment
 
