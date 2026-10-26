@@ -56,7 +56,7 @@ For production traffic point `SPRING_DATASOURCE_URL` at a client/server database
 Hibernate-supported dialect works (MySQL, PostgreSQL, ...), with the matching
 `SPRING_DATASOURCE_DRIVER_CLASS_NAME` and
 `SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT`. Manage the schema yourself (a reference DDL
-is shipped in [`db/`](https://github.com/sipgate/sparta-hss-foss/tree/main/db)) and set
+is shipped in [`db/`](../../db)) and set
 `SPRING_JPA_HIBERNATE_DDL_AUTO=none`.
 
 ## Multiple instances

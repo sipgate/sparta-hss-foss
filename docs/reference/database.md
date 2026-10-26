@@ -1,7 +1,7 @@
 # Database
 
-The HSS keeps all state in 14 tables. A reference DDL (MySQL dump) is shipped in
-[`db/spartahss-00-ddl.sql`](https://github.com/sipgate/sparta-hss-foss/blob/main/db/spartahss-00-ddl.sql).
+The HSS keeps all state in a database. A reference DDL (MySQL dump) is shipped in
+[`db/`](../../db).
 With the zero-setup default the schema is created and updated automatically
 (`ddl-auto: update`); for a production database manage the schema yourself and set
 `ddl-auto: none`.
