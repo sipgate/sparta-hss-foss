@@ -1,5 +1,6 @@
 sipgate:
     profileDir: "src/test/resources/imsiProfiles"
+    eutran-access-policy: "allow-all"
     ims:
         userProfile:
             path: "src/test/resources/user-profile.xml"

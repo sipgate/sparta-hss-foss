@@ -2,6 +2,8 @@
 # on top of this module ships its own application.yaml, which replaces this file entirely.
 sipgate:
     profileDir: "/usr/local/etc/sparta-hss/imsiProfiles"
+    # "subscription-state" = sim.active / "allow-all": ignore sim.active
+    eutran-access-policy: "subscription-state"
     auc:
         # What the sim table's op column holds: "opc" (pre-computed OPc, the 3GPP TS 35.205
         # recommendation) or "op" (OPc is then derived on every authentication).
