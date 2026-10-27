@@ -6,6 +6,7 @@ import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DI
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_ROAMING_NOT_ALLOWED;
 import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.AVP_SUBSCRIPTION_DATA;
+import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_EXPERIMENTAL_RESULT_CODE;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_VENDOR_ID;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_SUCCESS;
@@ -14,6 +15,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sipgate.sparta.diameter._3gpp.common._3gppConstants;
@@ -159,6 +161,33 @@ class UpdateLocationHandlerTest {
 
     // THEN
     assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+  }
+
+  @Test
+  void it_returns_unknown_eps_subscription_when_access_policy_denies() {
+    // GIVEN
+    when(eutranAccessPolicy.isEutranAccessAllowed("999990000104857", "262")).thenReturn(Optional.of(false));
+
+    // WHEN
+    final var answer = unwrapErrorAnswer(underTest.handle(request()));
+
+    // THEN
+    assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION);
+    // the policy gates the handler before any location is stored
+    verifyNoInteractions(locationLteDao);
+  }
+
+  @Test
+  void it_returns_unable_to_comply_when_access_policy_cannot_decide() {
+    // GIVEN
+    when(eutranAccessPolicy.isEutranAccessAllowed("999990000104857", "262")).thenReturn(Optional.empty());
+
+    // WHEN
+    final var answer = unwrapErrorAnswer(underTest.handle(request()));
+
+    // THEN
+    assertThat(answer.getResultCode()).isEqualTo(DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY);
+    verifyNoInteractions(locationLteDao);
   }
 
   private static Answer unwrapErrorAnswer(final CompletableFuture<?> future) {
