@@ -22,6 +22,7 @@ import static com.sipgate.sparta.hss.diameter.s6a.air.AuthenticationInfoHandler.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants;
@@ -190,6 +191,10 @@ class AuthenticationInfoHandlerTest {
         when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
     }
 
+    private void accessPolicyCannotDecide() {
+        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.empty());
+    }
+
     private void randomGeneratorReturnsFixedRand() {
         when(randGen.nextRand(anyInt())).thenReturn(DatatypeConverter.parseHexBinary(FIXED_RAND));
     }
@@ -308,6 +313,26 @@ class AuthenticationInfoHandlerTest {
         class RequestsEutranOnly {
             // GIVEN the Authentication Information Request contains a Requested-EUTRAN-Authentication-Info AVP
             // but no Requested-UTRAN-GERAN-Authentication-Info AVP
+
+            @Nested
+            class WithoutPolicyDecision {
+                @Test
+                void itReturnsUnableToComply() throws Exception {
+                    // GIVEN the access policy cannot make a decision for the subscriber (e.g. its backing
+                    // lookup failed)
+                    accessPolicyCannotDecide();
+
+                    final var request = buildRequest(requestedAuthInfo(1L), null);
+
+                    // WHEN
+                    final var answer = unwrapErrorAnswer(underTest.handle(request));
+
+                    // THEN no vectors are issued and UNABLE_TO_COMPLY (a base result) is returned
+                    assertThat(answer.findAVP(new AVPKey(DiameterConstants.AVP_EXPERIMENTAL_RESULT, 0))).isNull();
+                    assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_UNABLE_TO_COMPLY);
+                    verifyNoInteractions(randGen);
+                }
+            }
 
             @Nested
             class WithoutApnConfiguration {
