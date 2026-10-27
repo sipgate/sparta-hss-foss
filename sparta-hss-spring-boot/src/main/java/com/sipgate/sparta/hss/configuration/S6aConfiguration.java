@@ -69,11 +69,13 @@ public class S6aConfiguration {
         final EventPublisher eventPublisher,
         final BlockRoamingService blockRoamingService,
         final EmergencyRoamingRestriction emergencyRoamingRestriction,
-        final DiameterSessions diameterSessions) {
+        final DiameterSessions diameterSessions,
+        final EutranAccessPolicy eutranAccessPolicy
+    ) {
         return new UpdateLocationHandler(
             simDao, locationLteDao, imsiProfileDao, tacProfileDao, subscriptionDataFactory,
             meterRegistry, eventPublisher, blockRoamingService, emergencyRoamingRestriction,
-            diameterSessions);
+            diameterSessions, eutranAccessPolicy);
     }
 
     @Bean

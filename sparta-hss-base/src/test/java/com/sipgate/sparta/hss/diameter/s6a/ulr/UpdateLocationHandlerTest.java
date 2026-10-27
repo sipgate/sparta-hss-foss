@@ -32,6 +32,7 @@ import com.sipgate.sparta.diameter.base.core.avp.GroupedAVP;
 import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.Factory;
+import com.sipgate.sparta.hss.diameter.s6a.air.EutranAccessPolicy;
 import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationEvent;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataEncoder;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataFactory;
@@ -73,6 +74,7 @@ class UpdateLocationHandlerTest {
   @Mock private EventPublisher eventPublisher;
   @Mock private BlockRoamingService blockRoamingService;
   @Mock private EmergencyRoamingRestriction emergencyRoamingRestriction;
+  @Mock private EutranAccessPolicy eutranAccessPolicy;
 
   private UpdateLocationHandler underTest;
 
@@ -82,7 +84,7 @@ class UpdateLocationHandlerTest {
     underTest = new UpdateLocationHandler(
         simDao, locationLteDao, imsiProfileDao, tacProfileDao, subscriptionDataFactory,
         new SimpleMeterRegistry(), eventPublisher, blockRoamingService, emergencyRoamingRestriction,
-        diameterSessions);
+        diameterSessions, eutranAccessPolicy);
   }
 
   private static UpdateLocationRequest.In request() {
@@ -120,6 +122,7 @@ class UpdateLocationHandlerTest {
   void it_returns_roaming_not_allowed_when_blocked() {
     // GIVEN
     when(blockRoamingService.isBlocked("999990000104857", "262", "07")).thenReturn(true);
+    when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
 
     // WHEN
     final var answer = unwrapErrorAnswer(underTest.handle(request()));
@@ -132,6 +135,7 @@ class UpdateLocationHandlerTest {
   void it_returns_unable_to_comply_when_emergency_restriction_blocks_the_mcc() {
     // GIVEN
     when(emergencyRoamingRestriction.blocksMcc("262")).thenReturn(true);
+    when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
 
     // WHEN
     final var answer = unwrapErrorAnswer(underTest.handle(request()));
@@ -147,6 +151,7 @@ class UpdateLocationHandlerTest {
   void it_returns_user_unknown_when_msisdn_not_found() {
     // GIVEN
     when(blockRoamingService.isBlocked(anyString(), anyString(), anyString())).thenReturn(false);
+    when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
     when(simDao.getSimByImsiString(anyString())).thenReturn(Optional.empty());
 
     // WHEN
@@ -305,5 +310,6 @@ class UpdateLocationHandlerTest {
     when(subscriptionDataFactory.getEffectiveProfile(anyString(), anyString())).thenReturn("default");
     when(subscriptionDataFactory.createSubscriptionData(anyString(), anyString(), anyString()))
         .thenReturn(List.of(AVP.create(new AVPKey(S6aConstants.AVP_APN_OI_REPLACEMENT, _3gppConstants.VENDOR_ID_3GPP), "default")));
+    when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
   }
 }

@@ -4,6 +4,7 @@ import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_ROAMING_NOT_ALLOWED;
 import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.AVP_IMEI;
 import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.AVP_SOFTWARE_VERSION;
+import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION;
 import static com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataFactory.DEFAULT_PROFILE_NAME;
 
 import com.sipgate.sparta.diameter._3gpp.common._3gppConstants;
@@ -19,6 +20,7 @@ import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.client.RegisterableDiameterHandler;
 import com.sipgate.sparta.hss.diameter.common.auth.MncMccFormatter;
+import com.sipgate.sparta.hss.diameter.s6a.air.EutranAccessPolicy;
 import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationEvent;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataFactory;
 import com.sipgate.sparta.hss.event.EventPublisher;
@@ -52,6 +54,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
     private final BlockRoamingService blockRoamingService;
     private final EmergencyRoamingRestriction emergencyRoamingRestriction;
     private final DiameterSessions diameterSessions;
+    private final EutranAccessPolicy eutranAccessPolicy;
 
     public UpdateLocationHandler(
         final SimDao simDao,
@@ -63,7 +66,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         final EventPublisher eventPublisher,
         final BlockRoamingService blockRoamingService,
         final EmergencyRoamingRestriction emergencyRoamingRestriction,
-        final DiameterSessions diameterSessions) {
+        final DiameterSessions diameterSessions, final EutranAccessPolicy eutranAccessPolicy) {
         this.simDao = simDao;
         this.locationLteDao = locationLteDao;
         this.imsiProfileDao = imsiProfileDao;
@@ -74,6 +77,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         this.blockRoamingService = blockRoamingService;
         this.emergencyRoamingRestriction = emergencyRoamingRestriction;
         this.diameterSessions = diameterSessions;
+        this.eutranAccessPolicy = eutranAccessPolicy;
     }
 
     private static String extractTac(final UpdateLocationRequest request) {
@@ -164,6 +168,20 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         final var visitedPlmn = MncMccFormatter.snIdToMccMnc(request.getVisitedPlmnId());
 
         LOGGER.info("imsi: {} on VisitedPlmnId: {} from mme {} ", imsi, visitedPlmn.plmn(), request.getOriginHost());
+
+        final var maybeAllowed = eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
+
+        if (maybeAllowed.isEmpty()) {
+            LOGGER.info("imsi: {} rejected - access policy lookup failure (mcc {})", imsi, visitedPlmn.mcc());
+            throw new DiameterErrorAnswerException(
+                DiameterMessageFactory.createErrorAnswer(request, DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY));
+        }
+
+        if(!maybeAllowed.get()) {
+            LOGGER.info("imsi: {} rejected - access policy denied (mcc {})", imsi, visitedPlmn.mcc());
+            throw new DiameterErrorAnswerException(
+                DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION));
+        }
 
         // Emergency MCC allowlist: answer 5012 (a transient signal to the UE, EMM cause #17)
         // instead of 5004, so phones retry instead of forbidding the PLMN.
