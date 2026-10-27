@@ -183,11 +183,11 @@ class AuthenticationInfoHandlerTest {
     }
 
     private void subscriberHasNotAnyApnConfiguration() {
-        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(false);
+        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(false));
     }
 
     private void subscriberHasApnConfiguration() {
-        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(true);
+        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
     }
 
     private void randomGeneratorReturnsFixedRand() {

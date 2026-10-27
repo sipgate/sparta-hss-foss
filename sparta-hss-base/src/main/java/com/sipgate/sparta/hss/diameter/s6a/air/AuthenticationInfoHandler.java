@@ -37,6 +37,7 @@ import com.sipgate.sparta.hss.persistence.entities.Sim;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import jakarta.xml.bind.DatatypeConverter;
 import org.slf4j.Logger;
@@ -121,7 +122,12 @@ public class AuthenticationInfoHandler
         }
 
         final var visitedPlmnId = Tbcd.decodePlmnId(request.getVisitedPlmnId());
-        if (!isAllowedFor4G(imsi, visitedPlmnId)) {
+        final var maybeAllowed = isAllowedFor4G(imsi, visitedPlmnId);
+        if(maybeAllowed.isEmpty()) {
+            LOGGER.warn("unable to query 4g access policy for imsi {}", imsi);
+            throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
+        }
+        if (!maybeAllowed.get()) {
             LOGGER.info("imsi {} is not allowed to use 4g data", imsi);
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION));
         }
@@ -142,12 +148,12 @@ public class AuthenticationInfoHandler
            && utranGeranAuthInfo.findAVP(KEY_RE_SYNCHRONIZATION_INFO) != null;
     }
 
-    private boolean isAllowedFor4G(final String imsi, final String visitedPlmnId) {
+    private Optional<Boolean> isAllowedFor4G(final String imsi, final String visitedPlmnId) {
         if (visitedPlmnId != null && visitedPlmnId.length() > 2) {
             return eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmnId.substring(0, 3));
         }
 
-        return false;
+        return Optional.of(false);
     }
 
     private List<AVP> process4GAuthentication(
