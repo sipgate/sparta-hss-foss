@@ -12,6 +12,7 @@ import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.ImsiProfileDao;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -43,9 +44,10 @@ public class SwxConfiguration {
         final LocationVowifiDao locationVowifiDao,
         final Authenticator authenticator,
         final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation,
-        final EventPublisher eventPublisher) {
+        final EventPublisher eventPublisher,
+        final AccessPolicy accessPolicy) {
         return new SwxMultimediaAuthHandler(
-            simDao, locationVowifiDao, authenticator, eapAkaPrimeKeyDerivation, eventPublisher);
+            simDao, locationVowifiDao, authenticator, eapAkaPrimeKeyDerivation, eventPublisher, accessPolicy);
     }
 
     @Bean
@@ -55,8 +57,9 @@ public class SwxConfiguration {
         final ImsiProfileDao imsiProfileDao,
         final Non3gppUserDataFactory non3gppUserDataFactory,
         final EventPublisher eventPublisher,
-        final MeterRegistry meterRegistry) {
+        final MeterRegistry meterRegistry,
+        final AccessPolicy accessPolicy) {
         return new SwxServerAssignmentHandler(
-            simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, meterRegistry);
+            simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, meterRegistry, accessPolicy);
     }
 }

@@ -14,6 +14,7 @@ import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import com.sipgate.sparta.hss.persistence.MsisdnDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.xml.bind.JAXBException;
 import java.io.IOException;
@@ -45,8 +46,9 @@ public class CxConfiguration {
         final ImsiScscfDao imsiScscfDao,
         final Authenticator authenticator,
         final EventPublisher eventPublisher,
-        final DiameterSessions diameterSessions) {
-        return new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions);
+        final DiameterSessions diameterSessions,
+        final AccessPolicy accessPolicy) {
+        return new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy);
     }
 
     @Bean
@@ -54,8 +56,9 @@ public class CxConfiguration {
         final SimService simService,
         final ImsService imsService,
         final MeterRegistry meterRegistry,
-        final EventPublisher eventPublisher) {
-        return new ServerAssignmentHandler(simService, imsService, meterRegistry, eventPublisher);
+        final EventPublisher eventPublisher,
+        final AccessPolicy accessPolicy) {
+        return new ServerAssignmentHandler(simService, imsService, meterRegistry, eventPublisher, accessPolicy);
     }
 
     @Bean

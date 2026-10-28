@@ -26,6 +26,7 @@ import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.ImsiProfileDao;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import jakarta.transaction.Transactional;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.HashMap;
@@ -61,12 +62,12 @@ public class SwxServerAssignmentHandler
         final ImsiProfileDao imsiProfileDao,
         final Non3gppUserDataFactory non3gppUserDataFactory,
         final EventPublisher eventPublisher,
-        final MeterRegistry meterRegistry)
+        final MeterRegistry meterRegistry,
+        final AccessPolicy accessPolicy)
     {
         this.meterRegistry = meterRegistry;
         final var deregister = new DeregisterAaaHandler(simDao, locationVowifiDao, eventPublisher);
-        final var register = new RegisterHandler(
-            simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher);
+        final var register = new RegisterHandler(simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, accessPolicy);
         this.handlers = new HashMap<>();
         this.handlers.put(SERVER_ASSIGNMENT_USER_DEREGISTRATION, deregister);
         this.handlers.put(SERVER_ASSIGNMENT_ADMINISTRATIVE_DEREGISTRATION, deregister);

@@ -11,11 +11,12 @@ import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_SIP_AUTHO
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_SIP_ITEM_NUMBER;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_AUTH_SCHEME_NOT_SUPPORTED;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_IDENTITY_ALREADY_REGISTERED;
-import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_USER_NAME;
-import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_MISSING_AVP;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.*;
 import static jakarta.xml.bind.DatatypeConverter.parseHexBinary;
 
+import com.sipgate.sparta.diameter._3gpp.common._3gppConstants;
 import com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants;
+import com.sipgate.sparta.diameter._3gpp.swx.SwxConstants;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.MultimediaAuthAnswer;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.MultimediaAuthRequest;
 import com.sipgate.sparta.diameter.base.core.DiameterConstants;
@@ -36,6 +37,7 @@ import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.LocationVowifi;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import jakarta.transaction.Transactional;
 import java.util.Arrays;
 import java.util.List;
@@ -82,19 +84,22 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
     private final Authenticator authenticator;
     private final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation;
     private final EventPublisher eventPublisher;
+    private final AccessPolicy accessPolicy;
 
     public SwxMultimediaAuthHandler(
         final SimDao simDao,
         final LocationVowifiDao locationVowifiDao,
         final Authenticator authenticator,
         final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation,
-        final EventPublisher eventPublisher)
+        final EventPublisher eventPublisher,
+        final AccessPolicy accessPolicy)
     {
         this.simDao = simDao;
         this.locationVowifiDao = locationVowifiDao;
         this.authenticator = authenticator;
         this.eapAkaPrimeKeyDerivation = eapAkaPrimeKeyDerivation;
         this.eventPublisher = eventPublisher;
+        this.accessPolicy = accessPolicy;
     }
 
 
@@ -154,9 +159,22 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
         // concurrent MARs for the same IMSI must serialise here or their SQNs overlap (TS 33.102).
         final var maybeSim = simDao.getSimByImsiStringForUpdate(imsi);
         if (maybeSim.isEmpty()) {
+            LOGGER.info("imsi={} SWx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. sim not found in database.", imsi);
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
                 request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
         }
+
+        final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
+        if (maybeAllowed.isEmpty()) {
+            LOGGER.warn("imsi={} SWx/MAR answers with RES_DIAMETER_UNABLE_TO_COMPLY. unable to query ims access policy", imsi);
+            throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
+        }
+        if (!maybeAllowed.get()) {
+            LOGGER.info("imsi={} SWx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION. access policy denied access", imsi);
+            throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
+                request, VENDOR_ID_3GPP, SwxConstants.EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION));
+        }
+
         final var sim = maybeSim.get();
 
         final var stored = locationVowifiDao.getAaaServer(imsi);

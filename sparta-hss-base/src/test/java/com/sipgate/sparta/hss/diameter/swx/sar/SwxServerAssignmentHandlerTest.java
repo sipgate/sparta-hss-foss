@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.sipgate.sparta.diameter._3gpp.swx.SwxConstants;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.ServerAssignmentAnswer;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.ServerAssignmentRequest;
 import com.sipgate.sparta.diameter.base.core.Command;
@@ -39,6 +40,7 @@ import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.LocationVowifi;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
@@ -97,10 +99,15 @@ class SwxServerAssignmentHandlerTest {
     @Mock
     private Non3gppUserDataFactory non3gppUserDataFactory;
 
+    @Mock
+    private AccessPolicy accessPolicy;
+
     @BeforeEach
     void setUp() {
         // Default: Sim is present; tests override when needed.
         lenient().when(simDao.getSimByImsiString(IMSI)).thenReturn(Optional.of(new Sim()));
+        // Default: the access policy allows this IMSI; denial tests override when needed.
+        lenient().when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(true));
     }
 
     /**
@@ -313,6 +320,42 @@ class SwxServerAssignmentHandlerTest {
 
         verifyNoInteractions(locationVowifiDao);
         verifyNoInteractions(eventPublisher);
+    }
+
+    // --- REGISTRATION access policy cannot decide → 5012 Experimental-Result ---
+
+    @Test
+    void itAnswersUnableToComplyForRegistrationWhenAccessPolicyCannotDecide() throws Exception {
+        // GIVEN — known SIM (setUp), but the access policy cannot be queried for a decision
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.empty());
+        final var sar = buildSar(USERNAME, SERVER_ASSIGNMENT_REGISTRATION, ORIGIN_HOST, ORIGIN_REALM);
+
+        // WHEN
+        final var answer = underTest.handle(sar).join();
+
+        // THEN — no AAA stored, no profile served, no events
+        assertExperimentalResult(answer, RES_DIAMETER_UNABLE_TO_COMPLY);
+        assertCommonAnswerFields(answer, USERNAME);
+        verify(locationVowifiDao, never()).store(any(), any(), any(), any());
+        verifyNoInteractions(imsiProfileDao, non3gppUserDataFactory, eventPublisher);
+    }
+
+    // --- REGISTRATION access policy denies → USER_NO_NON_3GPP_SUBSCRIPTION (5450) ---
+
+    @Test
+    void itAnswersNoNon3gppSubscriptionForRegistrationWhenAccessPolicyDeniesAccess() throws Exception {
+        // GIVEN — known SIM (setUp), but the access policy denies IMS access
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
+        final var sar = buildSar(USERNAME, SERVER_ASSIGNMENT_REGISTRATION, ORIGIN_HOST, ORIGIN_REALM);
+
+        // WHEN
+        final var answer = underTest.handle(sar).join();
+
+        // THEN — no AAA stored, no profile served, no events
+        assertExperimentalResult(answer, SwxConstants.EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION);
+        assertCommonAnswerFields(answer, USERNAME);
+        verify(locationVowifiDao, never()).store(any(), any(), any(), any());
+        verifyNoInteractions(imsiProfileDao, non3gppUserDataFactory, eventPublisher);
     }
 
     // --- Unknown IMSI (Sim not found) → 5001 ---

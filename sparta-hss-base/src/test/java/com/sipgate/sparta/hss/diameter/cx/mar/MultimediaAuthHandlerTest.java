@@ -43,6 +43,7 @@ import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.ImsiScscf;
 import com.sipgate.sparta.hss.persistence.entities.Msisdn;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
@@ -96,11 +97,14 @@ class MultimediaAuthHandlerTest {
     @Mock
     private ImsiScscfDao imsiScscfDao;
 
+    @Mock
+    private AccessPolicy accessPolicy;
+
     @BeforeEach
     void setUp() {
         final var authenticator = new MilenageAuthenticator(randomGenerator, new SimpleMeterRegistry(), StoredKeyFormat.OP);
         final var diameterSessions = new DiameterSessions(Factory.nodeConfig("origin-host", "origin-realm"));
-        underTest = new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions);
+        underTest = new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy);
     }
 
     public static Stream<Arguments> provideRtrCase() {
@@ -249,6 +253,7 @@ class MultimediaAuthHandlerTest {
         when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
         final var knownMsisdn = new Msisdn("known-msisdn");
         knownSim.setMsisdn(knownMsisdn);
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
 
         // WHEN
         final var answer = underTest.handle(mar).join();
@@ -256,6 +261,46 @@ class MultimediaAuthHandlerTest {
         // THEN
         assertSuccessfulQuintuplets(answer, knownUsername, knownMsisdn.getMsisdn());
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void itAnswersUnableToComplyWhenAccessPolicyCannotDecide() throws Exception {
+        // GIVEN — the SIM is known, but the access policy cannot be queried for a decision
+        final var knownImsi = "999990000263716";
+        final var knownUsername = knownImsi + "@ims.mnc003.mcc262.3gppnetwork.org";
+        final var mar = buildMar(knownUsername, "Digest-AKAv1-MD5");
+
+        final var knownSim = new Sim(null, "some-secret-key-at-least-15-bytes".getBytes(StandardCharsets.UTF_8));
+        knownSim.setOp(new byte[16]);
+        when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
+        when(accessPolicy.isImsAccessAllowed(knownImsi)).thenReturn(Optional.empty());
+
+        // WHEN
+        final var answer = unwrapErrorAnswer(underTest.handle(mar));
+
+        // THEN — transient base-protocol error; no vector generated, no events published
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_UNABLE_TO_COMPLY);
+        verifyNoInteractions(randomGenerator, eventPublisher);
+    }
+
+    @Test
+    void itAnswersUserUnknownWhenAccessPolicyDeniesAccess() throws Exception {
+        // GIVEN — the SIM is known, but the access policy denies IMS access
+        final var knownImsi = "999990000263716";
+        final var knownUsername = knownImsi + "@ims.mnc003.mcc262.3gppnetwork.org";
+        final var mar = buildMar(knownUsername, "Digest-AKAv1-MD5");
+
+        final var knownSim = new Sim(null, "some-secret-key-at-least-15-bytes".getBytes(StandardCharsets.UTF_8));
+        knownSim.setOp(new byte[16]);
+        when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
+        when(accessPolicy.isImsAccessAllowed(knownImsi)).thenReturn(Optional.of(false));
+
+        // WHEN
+        final var answer = unwrapErrorAnswer(underTest.handle(mar));
+
+        // THEN — refused as 3GPP Experimental-Result; no vector generated, no events published
+        assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+        verifyNoInteractions(randomGenerator, eventPublisher);
     }
 
     @Test
@@ -272,6 +317,7 @@ class MultimediaAuthHandlerTest {
         knownSim.setOp(new byte[16]);
         knownSim.setMsisdn(new Msisdn("known-msisdn"));
         when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
 
         // WHEN
         underTest.handle(mar).join();
@@ -423,6 +469,7 @@ class MultimediaAuthHandlerTest {
             when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
             final var knownMsisdn = new Msisdn("known-msisdn");
             knownSim.setMsisdn(knownMsisdn);
+            when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
 
             // WHEN
             final var answer = underTest.handle(mar).join();
@@ -481,6 +528,7 @@ class MultimediaAuthHandlerTest {
             when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
             final var knownMsisdn = new Msisdn("known-msisdn");
             knownSim.setMsisdn(knownMsisdn);
+            when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
 
             // WHEN
             final var answer = underTest.handle(mar).join();
@@ -514,6 +562,7 @@ class MultimediaAuthHandlerTest {
             knownSim.setOp(new byte[16]);
             knownSim.setMsisdn(new Msisdn("known-msisdn"));
             when(simDao.getSimByImsiStringForUpdate(knownImsi)).thenReturn(Optional.of(knownSim));
+            when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
 
             // WHEN — generate throws (resync MAC mismatch), caught by handler
             final var answer = underTest.handle(mar);

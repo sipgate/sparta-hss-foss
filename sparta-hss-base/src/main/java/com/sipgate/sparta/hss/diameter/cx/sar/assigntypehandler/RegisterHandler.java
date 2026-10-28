@@ -1,5 +1,6 @@
 package com.sipgate.sparta.hss.diameter.cx.sar.assigntypehandler;
 
+import com.sipgate.sparta.diameter._3gpp.common._3gppConstants;
 import com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentAnswer;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentRequest;
@@ -7,29 +8,45 @@ import com.sipgate.sparta.diameter.base.core.DiameterConstants;
 import com.sipgate.sparta.diameter.base.core.DiameterMessageFactory;
 import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.common.ServingNodeInfo;
+import com.sipgate.sparta.hss.diameter.cx.sar.ScscfAssignmentChanged;
 import com.sipgate.sparta.hss.diameter.cx.sar.identity.PublicIdentity;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
-import com.sipgate.sparta.hss.diameter.cx.sar.ScscfAssignmentChanged;
 import com.sipgate.sparta.hss.event.EventPublisher;
-import java.util.Objects;
-
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
 
 public class RegisterHandler extends ServerAssignTypeHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegisterHandler.class);
     private final ImsService imsService;
     private final EventPublisher eventPublisher;
+    private final AccessPolicy accessPolicy;
 
-    public RegisterHandler(final ImsService imsService, final EventPublisher eventPublisher) {
+    public RegisterHandler(final ImsService imsService, final EventPublisher eventPublisher, final AccessPolicy accessPolicy) {
         this.imsService = imsService;
         this.eventPublisher = eventPublisher;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
     public ServerAssignmentAnswer.Out handle(final ServerAssignmentRequest.In request, final PublicIdentity identity) throws DiameterErrorAnswerException {
         final var imsi = getImsiFromRequest(request);
+
+        final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
+        if (maybeAllowed.isEmpty()) {
+            LOGGER.warn("imsi={} Cx/SAR/Register answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. unable to query ims access policy", imsi);
+            return DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+        }
+        if (!maybeAllowed.get()) {
+            LOGGER.info("imsi={} Cx/SAR/Register answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. access policy denied access", imsi);
+            return DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+        }
+
         final var maybeRegisteredScscf = imsService.getScscf(imsi);
         final var scscf = request.getServerName();
 

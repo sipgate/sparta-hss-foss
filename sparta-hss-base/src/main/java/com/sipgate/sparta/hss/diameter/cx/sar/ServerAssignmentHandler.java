@@ -18,6 +18,7 @@ import com.sipgate.sparta.hss.diameter.cx.sar.identity.PublicIdentity;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.SimService;
 import com.sipgate.sparta.hss.event.EventPublisher;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import java.util.HashMap;
@@ -39,13 +40,15 @@ public class ServerAssignmentHandler implements RegisterableDiameterHandler<Serv
 
     private final ServerAssignTypeHandler unknownAssignTypeHandler = new NoopHandler(new SaaOutcome.Error(RES_DIAMETER_UNABLE_TO_COMPLY));
     private final EventPublisher eventPublisher;
+    private final AccessPolicy accessPolicy;
     private Map<Integer, ServerAssignTypeHandler> handlers;
 
-    public ServerAssignmentHandler(final SimService simService, final ImsService imsService, final MeterRegistry meterRegistry, final EventPublisher eventPublisher) {
+    public ServerAssignmentHandler(final SimService simService, final ImsService imsService, final MeterRegistry meterRegistry, final EventPublisher eventPublisher, final AccessPolicy accessPolicy) {
         this.simService = simService;
         this.imsService = imsService;
         this.meterRegistry = meterRegistry;
         this.eventPublisher = eventPublisher;
+        this.accessPolicy = accessPolicy;
     }
 
     private static String valueOfNullableList(final List<String> values) {
@@ -121,7 +124,7 @@ public class ServerAssignmentHandler implements RegisterableDiameterHandler<Serv
         handlers.put(SERVER_ASSIGNMENT_TIMEOUT_DEREGISTRATION_STORE_SERVER_NAME, deregisterNotStored);
         handlers.put(SERVER_ASSIGNMENT_USER_DEREGISTRATION_STORE_SERVER_NAME, deregisterNotStored);
 
-        final ServerAssignTypeHandler register = new ValidatingHandler(new RegisterHandler(imsService, eventPublisher), simService);
+        final ServerAssignTypeHandler register = new ValidatingHandler(new RegisterHandler(imsService, eventPublisher, accessPolicy), simService);
         handlers.put(SERVER_ASSIGNMENT_REGISTRATION, register);
         handlers.put(SERVER_ASSIGNMENT_RE_REGISTRATION, register);
         return handlers;

@@ -1,14 +1,9 @@
 package com.sipgate.sparta.hss.diameter.cx.mar;
 
-import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
-import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.*;
-import static jakarta.xml.bind.DatatypeConverter.parseHexBinary;
-import static jakarta.xml.bind.DatatypeConverter.printHexBinary;
-
 import com.sipgate.sparta.diameter._3gpp.common._3gppConstants;
 import com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants;
-import com.sipgate.sparta.diameter._3gpp.cxdx.messages.MultimediaAuthRequest;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.MultimediaAuthAnswer;
+import com.sipgate.sparta.diameter._3gpp.cxdx.messages.MultimediaAuthRequest;
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.RegistrationTerminationRequest;
 import com.sipgate.sparta.diameter.base.core.DiameterConstants;
 import com.sipgate.sparta.diameter.base.core.DiameterMessageFactory;
@@ -18,23 +13,27 @@ import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.client.RegisterableDiameterHandler;
 import com.sipgate.sparta.hss.diameter.common.AnswerFactory;
-import com.sipgate.sparta.hss.diameter.common.auth.AkaVector;
-import com.sipgate.sparta.hss.diameter.common.auth.Authenticator;
-import com.sipgate.sparta.hss.diameter.common.auth.MilenageLogger;
-import com.sipgate.sparta.hss.diameter.common.auth.MilenageInput;
-import com.sipgate.sparta.hss.diameter.common.auth.ResyncInfo;
+import com.sipgate.sparta.hss.diameter.common.auth.*;
 import com.sipgate.sparta.hss.diameter.cx.rtr.RegistrationTerminationEvent;
 import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.ImsiScscf;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
+import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.*;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY;
+import static jakarta.xml.bind.DatatypeConverter.parseHexBinary;
+import static jakarta.xml.bind.DatatypeConverter.printHexBinary;
 
 public class MultimediaAuthHandler implements RegisterableDiameterHandler<MultimediaAuthRequest.In, MultimediaAuthAnswer.Out> {
 
@@ -64,20 +63,23 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
     private final Authenticator authenticator;
     private final EventPublisher eventPublisher;
     private final DiameterSessions diameterSessions;
+    private final AccessPolicy accessPolicy;
 
 
     public MultimediaAuthHandler(
         final SimDao simDao,
         final ImsiScscfDao imsiScscfDao,
         final Authenticator authenticator,
-        final EventPublisher eventPublisher, final DiameterSessions diameterSessions)
-    {
+        final EventPublisher eventPublisher,
+        final DiameterSessions diameterSessions,
+        final AccessPolicy accessPolicy) {
         this.simDao = simDao;
 
         this.imsiScscfDao = imsiScscfDao;
         this.authenticator = authenticator;
         this.eventPublisher = eventPublisher;
         this.diameterSessions = diameterSessions;
+        this.accessPolicy = accessPolicy;
     }
 
 
@@ -105,8 +107,7 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
     }
 
     private CompletableFuture<MultimediaAuthAnswer.Out> doHandle(final MilenageLogger milenageLogger, final MultimediaAuthRequest.In request)
-        throws Exception
-    {
+        throws Exception {
         // TODO: Wird das noch gebraucht?
         /* Helpful RFC for this implementation: RFC 4740. section 8.8 */
         if (request.getSipAuthDataItem() == null) {
@@ -131,8 +132,19 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         // FOR-UPDATE lock: the vector generation below read-increments-writes the SIM's SQN, so
         // concurrent MARs for the same IMSI must serialise here or their SQNs overlap (TS 33.102).
         final var maybeSim = simDao.getSimByImsiStringForUpdate(imsi);
-
         if (maybeSim.isEmpty()) {
+            LOGGER.info("imsi={} Cx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. sim not found in database.", imsi);
+            throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
+                request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
+        }
+
+        final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
+        if (maybeAllowed.isEmpty()) {
+            LOGGER.warn("imsi={} Cx/MAR answers with RES_DIAMETER_UNABLE_TO_COMPLY. unable to query ims access policy", imsi);
+            throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
+        }
+        if (!maybeAllowed.get()) {
+            LOGGER.info("imsi={} Cx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. access policy denied access", imsi);
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
                 request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
         }
@@ -174,8 +186,7 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
     }
 
     /// fire-and-forget, the answer is only logged
-    private void cancelPreviousRegistrationIfChanged(final MultimediaAuthRequest.In request, final String imsi, final String publicIdentity)
-    {
+    private void cancelPreviousRegistrationIfChanged(final MultimediaAuthRequest.In request, final String imsi, final String publicIdentity) {
         final var maybePreviousScscf = imsiScscfDao.getScscf(imsi);
         if (maybePreviousScscf.isEmpty()) {
             return;
@@ -184,8 +195,8 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         final var previousScscf = maybePreviousScscf.get();
         if (
             Objects.equals(previousScscf.getScscf(), request.getServerName())
-                && Objects.equals(previousScscf.getDiameterHost(), request.getOriginHost())
-                && Objects.equals(previousScscf.getDiameterRealm(), request.getOriginRealm())
+            && Objects.equals(previousScscf.getDiameterHost(), request.getOriginHost())
+            && Objects.equals(previousScscf.getDiameterRealm(), request.getOriginRealm())
         ) {
             return;
         }
@@ -194,8 +205,7 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         sendRegistrationTermination(request.getUserName(), publicIdentity, previousScscf);
     }
 
-    private void sendRegistrationTermination(final String userName, final String publicIdentity, final ImsiScscf previousScscf)
-    {
+    private void sendRegistrationTermination(final String userName, final String publicIdentity, final ImsiScscf previousScscf) {
         final var rtr = diameterSessions.createRequest(RegistrationTerminationRequest.Out.class,
             DiameterConstants.AUTH_SESSION_STATE_NOT_MAINTAINED,
             previousScscf.getDiameterHost(),

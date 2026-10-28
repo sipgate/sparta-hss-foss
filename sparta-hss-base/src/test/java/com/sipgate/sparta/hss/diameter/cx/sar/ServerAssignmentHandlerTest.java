@@ -1,10 +1,50 @@
 package com.sipgate.sparta.hss.diameter.cx.sar;
 
-import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_IDENTITIES_DONT_MATCH;
-import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN;
+import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentAnswer;
+import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentRequest;
+import com.sipgate.sparta.diameter.base.core.Answer;
+import com.sipgate.sparta.diameter.base.core.Command;
+import com.sipgate.sparta.diameter.base.core.DiameterConstants;
+import com.sipgate.sparta.diameter.base.core.EndToEndId;
+import com.sipgate.sparta.diameter.base.core.ErrorAnswer;
+import com.sipgate.sparta.diameter.base.core.HopByHopId;
+import com.sipgate.sparta.diameter.base.core.avp.AVP;
+import com.sipgate.sparta.diameter.base.core.avp.AVPContainer;
+import com.sipgate.sparta.diameter.base.core.avp.AVPKey;
+import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
+import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
+import com.sipgate.sparta.hss.diameter.cx.sar.service.SimService;
+import com.sipgate.sparta.hss.event.EventPublisher;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
+
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_IP_SM_GW_NAME;
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_IP_SM_GW_REALM;
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.AVP_SERVING_NODE;
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_IDENTITIES_DONT_MATCH;
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN;
 import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_PUBLIC_IDENTITY;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.EXP_RES_DIAMETER_ERROR_FEATURE_UNSUPPORTED;
@@ -14,52 +54,32 @@ import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGN
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_AUTHENTICATION_TIMEOUT;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_DEREGISTRATION_TOO_MUCH_DATA;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_NO_ASSIGNMENT;
-import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_RE_REGISTRATION;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_REGISTRATION;
+import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_RE_REGISTRATION;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_TIMEOUT_DEREGISTRATION;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_TIMEOUT_DEREGISTRATION_STORE_SERVER_NAME;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_UNREGISTERED_USER;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_USER_DEREGISTRATION;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.SERVER_ASSIGNMENT_USER_DEREGISTRATION_STORE_SERVER_NAME;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.USER_DATA_ALREADY_AVAILABLE;
-import static com.sipgate.sparta.diameter.base.core.DiameterConstants.*;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_EXPERIMENTAL_RESULT_CODE;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_USER_NAME;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_VENDOR_ID;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_AVP_OCCURS_TOO_MANY_TIMES;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_INVALID_AVP_VALUE;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_MISSING_AVP;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_SUCCESS;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
-
-import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentAnswer;
-import com.sipgate.sparta.diameter._3gpp.cxdx.messages.ServerAssignmentRequest;
-import com.sipgate.sparta.diameter.base.core.avp.AVP;
-import com.sipgate.sparta.diameter.base.core.avp.AVPContainer;
-import com.sipgate.sparta.diameter.base.core.DiameterConstants;
-import com.sipgate.sparta.diameter.base.core.Answer;
-import com.sipgate.sparta.diameter.base.core.Command;
-import com.sipgate.sparta.diameter.base.core.EndToEndId;
-import com.sipgate.sparta.diameter.base.core.ErrorAnswer;
-import com.sipgate.sparta.diameter.base.core.HopByHopId;
-import com.sipgate.sparta.diameter.base.core.avp.AVPKey;
-import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
-import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
-import com.sipgate.sparta.hss.diameter.cx.sar.service.SimService;
-import com.sipgate.sparta.hss.event.EventPublisher;
-import io.micrometer.core.instrument.MeterRegistry;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ServerAssignmentHandlerTest {
@@ -108,6 +128,9 @@ class ServerAssignmentHandlerTest {
 
     @Mock
     private EventPublisher eventPublisher;
+
+    @Mock
+    private AccessPolicy accessPolicy;
 
     @Captor
     private ArgumentCaptor<ScscfAssignmentChanged> scscfCaptor;
@@ -396,6 +419,7 @@ class ServerAssignmentHandlerTest {
         // GIVEN
         final var request = buildSar(KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP), serverAssignmentType, ANY_SCSCF, null);
 
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
         when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
         when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
         when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());
@@ -423,6 +447,7 @@ class ServerAssignmentHandlerTest {
         // GIVEN
         final var request = buildSar(KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_TEL), serverAssignmentType, ANY_SCSCF, null);
 
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
         when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
         when(simService.isMsisdnKnown(KNOWN_MSISDN)).thenReturn(true);
         when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
@@ -453,6 +478,7 @@ class ServerAssignmentHandlerTest {
             KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
             serverAssignmentType, ANY_SCSCF, USER_DATA_ALREADY_AVAILABLE);
 
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
         when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
         when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
         when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());
@@ -469,6 +495,23 @@ class ServerAssignmentHandlerTest {
         verify(imsService, never()).createUserData(any(), any());
         assertThat(scscfCaptor.getValue())
                 .isEqualTo(ScscfAssignmentChanged.ofRegister(KNOWN_IMSI, ANY_SCSCF));
+    }
+
+    @Test
+    void itAnswersUserUnknownForRegistrationWhenAccessPolicyDeniesAccess() throws Exception {
+        // GIVEN — a valid registration SAR for a known subscriber whose IMS access the policy denies
+        final var request = buildRegisterSar(KNOWN_PRIVATE_IDENTITY, KNOWN_PUBLIC_IDENTITY_SIP);
+
+        when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
+        when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
+        when(accessPolicy.isImsAccessAllowed(KNOWN_IMSI)).thenReturn(Optional.of(false));
+
+        // WHEN
+        final var answer = underTest.handle(request).join();
+
+        // THEN — the registration is refused: no S-CSCF stored, no user data, no events
+        assertExperimentalResult(answer, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+        verifyNoInteractions(eventPublisher, imsService);
     }
 
     @Test
@@ -557,6 +600,7 @@ class ServerAssignmentHandlerTest {
             KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
             SERVER_ASSIGNMENT_REGISTRATION, ANY_SCSCF, null, servingNodeWithIpSmGw());
 
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
         when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
         when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
         when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());
@@ -577,6 +621,7 @@ class ServerAssignmentHandlerTest {
             KNOWN_PRIVATE_IDENTITY, List.of(KNOWN_PUBLIC_IDENTITY_SIP),
             SERVER_ASSIGNMENT_REGISTRATION, ANY_SCSCF, null, null);
 
+        when(accessPolicy.isImsAccessAllowed(anyString())).thenReturn(Optional.of(true));
         when(simService.isImsiKnown(KNOWN_IMSI)).thenReturn(true);
         when(simService.getMsisdnByImsi(KNOWN_IMSI)).thenReturn(Optional.of(KNOWN_MSISDN));
         when(imsService.getScscf(KNOWN_IMSI)).thenReturn(Optional.empty());

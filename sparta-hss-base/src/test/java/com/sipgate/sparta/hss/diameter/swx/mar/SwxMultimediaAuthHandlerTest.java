@@ -19,6 +19,7 @@ import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AVP_VENDOR
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_INVALID_AVP_VALUE;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_MISSING_AVP;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_SUCCESS;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -36,6 +37,7 @@ import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 
 import com.sipgate.sparta.diameter._3gpp.swx.messages.MultimediaAuthAnswer;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.MultimediaAuthRequest;
+import com.sipgate.sparta.diameter._3gpp.swx.SwxConstants;
 import com.sipgate.sparta.diameter.base.core.Command;
 import com.sipgate.sparta.diameter.base.core.EndToEndId;
 import com.sipgate.sparta.diameter.base.core.HopByHopId;
@@ -52,6 +54,7 @@ import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.LocationVowifi;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
@@ -118,11 +121,16 @@ class SwxMultimediaAuthHandlerTest {
     @Mock
     private EventPublisher eventPublisher;
 
+    @Mock
+    private AccessPolicy accessPolicy;
+
     @BeforeEach
     void setUp() {
         // Default: Sim is present; tests override when needed.
         lenient().when(simDao.getSimByImsiStringForUpdate(IMSI)).thenReturn(Optional.of(new Sim()));
         lenient().when(simDao.getSimByImsiString(IMSI)).thenReturn(Optional.of(new Sim()));
+        // Default: the access policy allows this IMSI; denial tests override when needed.
+        lenient().when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(true));
     }
 
     private static byte[] parseHex(final String hex) {
@@ -496,8 +504,41 @@ class SwxMultimediaAuthHandlerTest {
 
         // THEN
         assertExperimentalErrorResult(answer, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+        verifyNoInteractions(accessPolicy);
         verifyNoInteractions(locationVowifiDao);
         verifyNoInteractions(eventPublisher);
+    }
+
+    // --- Access policy: no decision → DIAMETER_UNABLE_TO_COMPLY ---
+
+    @Test
+    void itAnswersUnableToComplyWhenAccessPolicyCannotDecide() throws Exception {
+        // GIVEN — the SIM is known, but the access policy cannot be queried for a decision
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.empty());
+        final var mar = buildMar(USERNAME, "EAP-AKA", ORIGIN_HOST, ORIGIN_REALM, null, null);
+
+        // WHEN
+        final var answer = unwrapErrorAnswer(underTest.handle(mar));
+
+        // THEN — transient base-protocol error; no vector generated, no AAA stored, no events
+        assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_UNABLE_TO_COMPLY);
+        verifyNoInteractions(locationVowifiDao, authenticator, eventPublisher);
+    }
+
+    // --- Access policy denies → USER_NO_NON_3GPP_SUBSCRIPTION (5450) ---
+
+    @Test
+    void itAnswersNoNon3gppSubscriptionWhenAccessPolicyDeniesAccess() throws Exception {
+        // GIVEN — the SIM is known, but the access policy denies IMS access
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
+        final var mar = buildMar(USERNAME, "EAP-AKA", ORIGIN_HOST, ORIGIN_REALM, null, null);
+
+        // WHEN
+        final var answer = unwrapErrorAnswer(underTest.handle(mar));
+
+        // THEN — refused per TS 29.273 §10.3; no vector generated, no AAA stored, no events
+        assertExperimentalErrorResult(answer, SwxConstants.EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION);
+        verifyNoInteractions(locationVowifiDao, authenticator, eventPublisher);
     }
 
     // --- Missing SipAuthDataItem → MISSING_AVP ---
