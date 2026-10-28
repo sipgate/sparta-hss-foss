@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Changed
+### Added
 
-* Renamed configuration property `sipgate.eutran-access-policy` to `sipgate.access-policy`.
+- Cx and SWx handlers for authentication and server assignment check the AccessPolicy interface before allowing access to the IMS core.
+
+### Changed
+
+- Added method `isImsAccessAllowed` to `EutranAccessPolicy` (also: removed `@FunctionalInterface`)
+- Renamed `EutranAccessPolicy` to `AccessPolicy` (also: moved to another package)
+- Renamed configuration property `sipgate.eutran-access-policy` to `sipgate.access-policy`.
+- Renamed metric `eutran_access_rejected` to `access_rejected` in order to include IMS metrics
 
 ## [2.0.0] - 2026-10-28
 
