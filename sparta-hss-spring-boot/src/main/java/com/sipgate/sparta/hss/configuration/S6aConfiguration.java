@@ -54,8 +54,9 @@ public class S6aConfiguration {
     public AuthenticationInfoHandler authenticationInfoHandler(
         final SimDao simDao,
         final EutranAccessPolicy eutranAccessPolicy,
-        final Authenticator authenticator) {
-        return new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator);
+        final Authenticator authenticator,
+        final MeterRegistry meterRegistry) {
+        return new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator, meterRegistry);
     }
 
     @Bean

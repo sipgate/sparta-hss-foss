@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: full effective-profile decision table (per-ULR matrix
   and summary view) for `imsi_profile`/`tac_profile` assignments.
 - Column `isActive` for SIM entities. Will be used for a new implementation of `EutranAccessPolicy` later. 
+- Metric `eutran_access_rejected` (`command`, `mcc`, `reason`) counting AIR/ULR
+  rejections by the `EutranAccessPolicy`.
+
+### Changed
+
+...
 
 ### Removed
 

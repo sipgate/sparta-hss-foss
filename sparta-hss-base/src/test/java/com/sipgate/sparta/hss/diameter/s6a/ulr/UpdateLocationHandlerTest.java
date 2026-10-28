@@ -80,12 +80,14 @@ class UpdateLocationHandlerTest {
 
   private UpdateLocationHandler underTest;
 
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   @BeforeEach
   void setUp() {
     final var diameterSessions = new DiameterSessions(Factory.nodeConfig("origin-host", "origin-realm"));
     underTest = new UpdateLocationHandler(
         simDao, locationLteDao, imsiProfileDao, tacProfileDao, subscriptionDataFactory,
-        new SimpleMeterRegistry(), eventPublisher, blockRoamingService, emergencyRoamingRestriction,
+        meterRegistry, eventPublisher, blockRoamingService, emergencyRoamingRestriction,
         diameterSessions, eutranAccessPolicy);
   }
 
@@ -175,6 +177,7 @@ class UpdateLocationHandlerTest {
     assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION);
     // the policy gates the handler before any location is stored
     verifyNoInteractions(locationLteDao);
+    assertThat(policyRejections("denied")).isEqualTo(1);
   }
 
   @Test
@@ -188,6 +191,14 @@ class UpdateLocationHandlerTest {
     // THEN
     assertThat(answer.getResultCode()).isEqualTo(DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY);
     verifyNoInteractions(locationLteDao);
+    assertThat(policyRejections("undecided")).isEqualTo(1);
+  }
+
+  private double policyRejections(final String reason) {
+    return meterRegistry.get("eutran_access_rejected")
+        .tags("command", "ulr", "mcc", "262", "reason", reason)
+        .counter()
+        .count();
   }
 
   private static Answer unwrapErrorAnswer(final CompletableFuture<?> future) {

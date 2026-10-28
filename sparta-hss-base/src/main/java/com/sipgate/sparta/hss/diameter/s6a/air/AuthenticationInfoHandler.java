@@ -27,17 +27,13 @@ import com.sipgate.sparta.diameter.base.core.avp.AVPKey;
 import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.client.RegisterableDiameterHandler;
 import com.sipgate.sparta.hss.diameter.common.AnswerFactory;
-import com.sipgate.sparta.hss.diameter.common.Tbcd;
-import com.sipgate.sparta.hss.diameter.common.auth.Authenticator;
-import com.sipgate.sparta.hss.diameter.common.auth.MilenageInput;
-import com.sipgate.sparta.hss.diameter.common.auth.MilenageLogger;
-import com.sipgate.sparta.hss.diameter.common.auth.ResyncInfo;
+import com.sipgate.sparta.hss.diameter.common.auth.*;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import jakarta.xml.bind.DatatypeConverter;
 import org.slf4j.Logger;
@@ -79,15 +75,18 @@ public class AuthenticationInfoHandler
     private final SimDao simDao;
     private final EutranAccessPolicy eutranAccessPolicy;
     private final Authenticator authenticator;
+    private final MeterRegistry meterRegistry;
 
     public AuthenticationInfoHandler(
         final SimDao simDao,
         final EutranAccessPolicy eutranAccessPolicy,
-        final Authenticator authenticator)
+        final Authenticator authenticator,
+        final MeterRegistry meterRegistry)
     {
         this.simDao = simDao;
         this.eutranAccessPolicy = eutranAccessPolicy;
         this.authenticator = authenticator;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -121,19 +120,20 @@ public class AuthenticationInfoHandler
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
 
-        final var visitedPlmnId = Tbcd.decodePlmnId(request.getVisitedPlmnId());
-        final var maybeAllowed = isAllowedFor4G(imsi, visitedPlmnId);
+        final var visitedPlmn = MncMccFormatter.snIdToMccMnc(request.getVisitedPlmnId());
+        final var maybeAllowed = eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
         if(maybeAllowed.isEmpty()) {
             LOGGER.warn("unable to query 4g access policy for imsi {}", imsi);
+            meterRegistry.counter("eutran_access_rejected", "command", "air", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi {} is not allowed to use 4g data", imsi);
+            meterRegistry.counter("eutran_access_rejected", "command", "air", "mcc", visitedPlmn.mcc(), "reason", "denied").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION));
         }
 
-        final var authenticationInfo = process4GAuthentication(request, milenageLogger, eutranAuthInfo, utranGeranAuthInfo, visitedPlmnId, imsi, sim.get());
-
+        final var authenticationInfo = process4GAuthentication(request, milenageLogger, eutranAuthInfo, utranGeranAuthInfo, visitedPlmn.plmn(), imsi, sim.get());
         final var authAnswer = DiameterMessageFactory.createAnswer(request, RES_DIAMETER_SUCCESS);
         authAnswer.setAuthenticationInfo(authenticationInfo);
         // never log the answer itself: it carries authentication vectors (key material)
@@ -146,14 +146,6 @@ public class AuthenticationInfoHandler
            && utranGeranAuthInfo != null
            && eutranAuthInfo.findAVP(KEY_RE_SYNCHRONIZATION_INFO) != null
            && utranGeranAuthInfo.findAVP(KEY_RE_SYNCHRONIZATION_INFO) != null;
-    }
-
-    private Optional<Boolean> isAllowedFor4G(final String imsi, final String visitedPlmnId) {
-        if (visitedPlmnId != null && visitedPlmnId.length() > 2) {
-            return eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmnId.substring(0, 3));
-        }
-
-        return Optional.of(false);
     }
 
     private List<AVP> process4GAuthentication(

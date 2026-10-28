@@ -62,7 +62,8 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 - UTRAN/GERAN vectors: RAND, XRES, AUTN (AMF `0x0000`), CK, IK.
 - 4G access is gated by the `EutranAccessPolicy`
   ([extension point](../development/extending.md#eutranaccesspolicy)); a denied
-  subscriber gets the `UNKNOWN_EPS_SUBSCRIPTION` error.
+  subscriber gets the `UNKNOWN_EPS_SUBSCRIPTION` error, a policy that cannot decide
+  yields `DIAMETER_UNABLE_TO_COMPLY` (both counted in `eutran_access_rejected`).
 - Re-synchronisation for **both** E-UTRAN and UTRAN/GERAN in one request is rejected.
 - Errors: unknown IMSI → `ERROR_USER_UNKNOWN`; vector-generation failure →
   `AUTHENTICATION_DATA_UNAVAILABLE`.
@@ -71,20 +72,23 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 
 The main location/subscription command:
 
-1. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
+1. **E-UTRAN access policy** — the same `EutranAccessPolicy` as for AIR: a denied
+   subscriber gets `UNKNOWN_EPS_SUBSCRIPTION` (5420), a policy that cannot decide
+   `DIAMETER_UNABLE_TO_COMPLY` (5012); both are counted in `eutran_access_rejected`.
+2. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
    MCC is answered `DIAMETER_UNABLE_TO_COMPLY` (5012, a transient signal so UEs
    retry) and counted in `roaming_blocked_emergency`.
-2. **Roaming rules** — blocked subscribers get `ROAMING_NOT_ALLOWED` (5004) and a
+3. **Roaming rules** — blocked subscribers get `ROAMING_NOT_ALLOWED` (5004) and a
    [blocked event](../concepts/roaming.md#blocked-events-and-recovery) is recorded;
    allowed subscribers clear their pending blocked events.
-3. The MSISDN is resolved (unknown subscriber → `ERROR_USER_UNKNOWN`).
-4. For S6a requests (ULR-Flags bit 1 set) the MME location is stored (host, realm,
+4. The MSISDN is resolved (unknown subscriber → `ERROR_USER_UNKNOWN`).
+5. For S6a requests (ULR-Flags bit 1 set) the MME location is stored (host, realm,
    visited PLMN, TAC from the IMEI); if the MME **changed**, a CLR is sent to the old
    MME **(out)**.
-5. The effective profile is determined ([IMSI over TAC over default](../concepts/profiles.md))
+6. The effective profile is determined ([IMSI over TAC over default](../concepts/profiles.md))
    and the answer carries the [subscription data](xml-profiles.md#s6a-format) for the
    visited PLMN (`effective_profile` and `subscription_data` metrics).
-6. `UeVisited` (TAC present) and `LocationUpdated` domain events are published.
+7. `UeVisited` (TAC present) and `LocationUpdated` domain events are published.
 
 ### PUR — Purge UE Request
 
@@ -121,7 +125,7 @@ The result codes sparta-hss answers with most often:
 | 5011 | `FEATURE_UNSUPPORTED`                    | Cx SAR `UNREGISTERED_USER` |
 | 5012 | `SERVING_NODE_FEATURE_UNSUPPORTED`       | Cx/SWx MAR, internal failure during vector generation |
 | 4181 | `AUTHENTICATION_DATA_UNAVAILABLE`        | AIR, vector generation failed |
-| 5420 | `UNKNOWN_EPS_SUBSCRIPTION`               | AIR, 4G access denied by the `EutranAccessPolicy` |
+| 5420 | `UNKNOWN_EPS_SUBSCRIPTION`               | AIR/ULR, 4G access denied by the `EutranAccessPolicy`; AIR without a Visited-PLMN-Id |
 
 In addition, standard Diameter error codes are used where noted
 (`DIAMETER_UNABLE_TO_COMPLY`, `DIAMETER_MISSING_AVP`, `DIAMETER_INVALID_AVP_VALUE`).

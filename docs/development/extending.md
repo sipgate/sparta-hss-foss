@@ -22,8 +22,10 @@ transactions itself.
 
 ## Extension points
 
-The base core exposes three extension points. In the Spring Boot deployment each is
-wired as a `@ConditionalOnMissingBean` — defining your own bean replaces the default.
+The base core exposes three extension points. In the Spring Boot deployment
+`EventPublisher` and `Authenticator` are wired as `@ConditionalOnMissingBean` —
+defining your own bean replaces the default. `EutranAccessPolicy` is selected by a
+property instead, see below.
 
 ### `EventPublisher`
 
@@ -51,13 +53,22 @@ Decides whether a subscriber may access E-UTRAN in a visited network:
 ```java
 @FunctionalInterface
 public interface EutranAccessPolicy {
-    boolean isEutranAccessAllowed(String imsi, String mcc);
+    Optional<Boolean> isEutranAccessAllowed(String imsi, String mcc);
 }
 ```
 
-Consulted by the AIR handler before issuing E-UTRAN vectors; a denied subscriber
-cannot authenticate for 4G in that network. Default: allow all. If you have
-different 4G access policies, they can be implemented here.
+Consulted by the AIR handler before issuing E-UTRAN vectors and by the ULR handler
+before accepting the location: `false` rejects with `UNKNOWN_EPS_SUBSCRIPTION`,
+an empty result (no decision possible, e.g. the backing lookup failed) with
+`DIAMETER_UNABLE_TO_COMPLY`. Both are counted in the
+[`eutran_access_rejected`](../reference/metrics.md#authentication) metric.
+
+The Spring Boot module ships two implementations, selected by
+[`sipgate.eutran-access-policy`](../reference/configuration.md#authentication):
+`subscription-state` (the SIM's `active` flag) and `allow-all`. There is no
+fallback: with the property unset and no bean of your own, the S6a handlers fail to
+wire. To use your own `EutranAccessPolicy` bean, leave the property unset — a
+built-in policy next to yours fails the start with two candidate beans.
 
 ## Embedding without Spring
 

@@ -114,6 +114,8 @@ class AuthenticationInfoHandlerTest {
 
     private AuthenticationInfoHandler underTest;
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     @Mock
     private SimDao simDao;
 
@@ -126,7 +128,7 @@ class AuthenticationInfoHandlerTest {
     @BeforeEach
     void setUp() {
         final var authenticator = new MilenageAuthenticator(randGen, new SimpleMeterRegistry(), StoredKeyFormat.OP);
-        underTest = new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator);
+        underTest = new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator, meterRegistry);
     }
 
     /**
@@ -189,6 +191,13 @@ class AuthenticationInfoHandlerTest {
 
     private void subscriberHasApnConfiguration() {
         when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
+    }
+
+    private double policyRejections(final String reason) {
+        return meterRegistry.get("eutran_access_rejected")
+            .tags("command", "air", "mcc", "262", "reason", reason)
+            .counter()
+            .count();
     }
 
     private void accessPolicyCannotDecide() {
@@ -331,6 +340,7 @@ class AuthenticationInfoHandlerTest {
                     assertThat(answer.findAVP(new AVPKey(DiameterConstants.AVP_EXPERIMENTAL_RESULT, 0))).isNull();
                     assertThat(answer.getResultCode()).isEqualTo(RES_DIAMETER_UNABLE_TO_COMPLY);
                     verifyNoInteractions(randGen);
+                    assertThat(policyRejections("undecided")).isEqualTo(1.0);
                 }
             }
 
@@ -348,6 +358,7 @@ class AuthenticationInfoHandlerTest {
 
                     // THEN the HSS shall return a Result Code of DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION.
                     assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION);
+                    assertThat(policyRejections("denied")).isEqualTo(1.0);
                 }
             }
 
