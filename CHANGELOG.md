@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-28
+
 > **Important:** You need to carefully migrate your database. 
 > The Column `Imsi.state` is dropped and the column `Sim.isActive` is added
 > with a default of `0`. If you do not migrate carefully you might end up with
@@ -44,5 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (SAR, MAR, RTR), S6a (AIR, ULR, ISD, NOR, PUR) and harness connectivity.
   Individual cases run via `make run-e2e-single TEST=...`.
 
-[Unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...HEAD
+[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/2.0.0...HEAD
+[2.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...2.0.0
 [1.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...1.0.0
