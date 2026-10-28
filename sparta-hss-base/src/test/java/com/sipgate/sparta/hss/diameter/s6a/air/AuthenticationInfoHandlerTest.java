@@ -196,8 +196,8 @@ class AuthenticationInfoHandlerTest {
     }
 
     private double policyRejections(final String reason) {
-        return meterRegistry.get("eutran_access_rejected")
-            .tags("command", "air", "mcc", "262", "reason", reason)
+        return meterRegistry.get("access_rejected")
+            .tags("command", "s6a/air", "mcc", "262", "reason", reason)
             .counter()
             .count();
     }

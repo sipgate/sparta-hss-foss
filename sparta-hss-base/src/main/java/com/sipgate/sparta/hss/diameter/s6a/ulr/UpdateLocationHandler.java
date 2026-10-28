@@ -173,14 +173,14 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
 
         if (maybeAllowed.isEmpty()) {
             LOGGER.info("imsi: {} rejected - access policy lookup failure (mcc {})", imsi, visitedPlmn.mcc());
-            meterRegistry.counter("eutran_access_rejected", "command", "ulr", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();
+            meterRegistry.counter("access_rejected", "command", "s6a/ulr", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();
             throw new DiameterErrorAnswerException(
                 DiameterMessageFactory.createErrorAnswer(request, DiameterConstants.RES_DIAMETER_UNABLE_TO_COMPLY));
         }
 
         if(!maybeAllowed.get()) {
             LOGGER.info("imsi: {} rejected - access policy denied (mcc {})", imsi, visitedPlmn.mcc());
-            meterRegistry.counter("eutran_access_rejected", "command", "ulr", "mcc", visitedPlmn.mcc(), "reason", "denied").increment();
+            meterRegistry.counter("access_rejected", "command", "s6a/ulr", "mcc", visitedPlmn.mcc(), "reason", "denied").increment();
             throw new DiameterErrorAnswerException(
                 DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION));
         }

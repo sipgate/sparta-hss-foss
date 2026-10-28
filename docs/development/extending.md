@@ -61,7 +61,7 @@ Consulted by the AIR handler before issuing E-UTRAN vectors and by the ULR handl
 before accepting the location: `false` rejects with `UNKNOWN_EPS_SUBSCRIPTION`,
 an empty result (no decision possible, e.g. the backing lookup failed) with
 `DIAMETER_UNABLE_TO_COMPLY`. Both are counted in the
-[`eutran_access_rejected`](../reference/metrics.md#authentication) metric.
+[`access_rejected`](../reference/metrics.md#authentication) metric.
 
 The Spring Boot module ships two implementations, selected by
 [`sipgate.access-policy`](../reference/configuration.md#authentication):

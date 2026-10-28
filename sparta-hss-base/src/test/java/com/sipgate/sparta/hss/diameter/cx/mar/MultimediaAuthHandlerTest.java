@@ -83,6 +83,8 @@ class MultimediaAuthHandlerTest {
     private static final AVPKey KEY_VENDOR_ID = new AVPKey(AVP_VENDOR_ID, 0);
     private static final AVPKey KEY_EXPERIMENTAL_RESULT_CODE = new AVPKey(AVP_EXPERIMENTAL_RESULT_CODE, 0);
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     private MultimediaAuthHandler underTest;
 
     @Mock
@@ -104,7 +106,7 @@ class MultimediaAuthHandlerTest {
     void setUp() {
         final var authenticator = new MilenageAuthenticator(randomGenerator, new SimpleMeterRegistry(), StoredKeyFormat.OP);
         final var diameterSessions = new DiameterSessions(Factory.nodeConfig("origin-host", "origin-realm"));
-        underTest = new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy);
+        underTest = new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy, meterRegistry);
     }
 
     public static Stream<Arguments> provideRtrCase() {

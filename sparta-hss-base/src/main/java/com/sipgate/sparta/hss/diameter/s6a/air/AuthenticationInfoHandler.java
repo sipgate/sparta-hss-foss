@@ -125,12 +125,12 @@ public class AuthenticationInfoHandler
         final var maybeAllowed = accessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
         if(maybeAllowed.isEmpty()) {
             LOGGER.warn("unable to query 4g access policy for imsi {}", imsi);
-            meterRegistry.counter("eutran_access_rejected", "command", "air", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();
+            meterRegistry.counter("access_rejected", "command", "s6a/air", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi {} is not allowed to use 4g data", imsi);
-            meterRegistry.counter("eutran_access_rejected", "command", "air", "mcc", visitedPlmn.mcc(), "reason", "denied").increment();
+            meterRegistry.counter("access_rejected", "command", "s6a/air", "mcc", visitedPlmn.mcc(), "reason", "denied").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, EXP_RES_DIAMETER_ERROR_UNKNOWN_EPS_SUBSCRIPTION));
         }
 

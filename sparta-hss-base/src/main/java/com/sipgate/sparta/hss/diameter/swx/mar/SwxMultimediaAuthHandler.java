@@ -38,6 +38,7 @@ import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.LocationVowifi;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import java.util.Arrays;
 import java.util.List;
@@ -85,6 +86,7 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
     private final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation;
     private final EventPublisher eventPublisher;
     private final AccessPolicy accessPolicy;
+    private final MeterRegistry meterRegistry;
 
     public SwxMultimediaAuthHandler(
         final SimDao simDao,
@@ -92,7 +94,8 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
         final Authenticator authenticator,
         final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation,
         final EventPublisher eventPublisher,
-        final AccessPolicy accessPolicy)
+        final AccessPolicy accessPolicy,
+        final MeterRegistry meterRegistry)
     {
         this.simDao = simDao;
         this.locationVowifiDao = locationVowifiDao;
@@ -100,6 +103,7 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
         this.eapAkaPrimeKeyDerivation = eapAkaPrimeKeyDerivation;
         this.eventPublisher = eventPublisher;
         this.accessPolicy = accessPolicy;
+        this.meterRegistry = meterRegistry;
     }
 
 
@@ -167,10 +171,12 @@ public class SwxMultimediaAuthHandler implements RegisterableDiameterHandler<Mul
         final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
         if (maybeAllowed.isEmpty()) {
             LOGGER.warn("imsi={} SWx/MAR answers with RES_DIAMETER_UNABLE_TO_COMPLY. unable to query ims access policy", imsi);
+            meterRegistry.counter("access_rejected", "command", "swx/mar", "reason", "undecided").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi={} SWx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION. access policy denied access", imsi);
+            meterRegistry.counter("access_rejected", "command", "swx/mar", "reason", "denied").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
                 request, VENDOR_ID_3GPP, SwxConstants.EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION));
         }

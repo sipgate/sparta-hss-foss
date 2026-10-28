@@ -36,6 +36,8 @@ import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
+
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +52,8 @@ class RegisterHandlerTest {
     private static final String AAA_HOST = "aaa-server.epc.mnc999.mcc999.3gppnetwork.org";
     private static final String REALM = "epc.mnc003.mcc262.3gppnetwork.org";
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     @Mock private SimDao simDao;
     @Mock private LocationVowifiDao locationVowifiDao;
     @Mock private ImsiProfileDao imsiProfileDao;
@@ -62,7 +66,7 @@ class RegisterHandlerTest {
     @BeforeEach
     void setUp() {
         underTest = new RegisterHandler(
-            simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, accessPolicy);
+            simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, accessPolicy, meterRegistry);
         // Default: the access policy allows this IMSI; denial tests override this stub.
         lenient().when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(true));
     }

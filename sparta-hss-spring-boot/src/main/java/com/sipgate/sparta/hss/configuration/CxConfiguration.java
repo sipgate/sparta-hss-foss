@@ -47,8 +47,9 @@ public class CxConfiguration {
         final Authenticator authenticator,
         final EventPublisher eventPublisher,
         final DiameterSessions diameterSessions,
-        final AccessPolicy accessPolicy) {
-        return new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy);
+        final AccessPolicy accessPolicy,
+        final MeterRegistry meterRegistry) {
+        return new MultimediaAuthHandler(simDao, imsiScscfDao, authenticator, eventPublisher, diameterSessions, accessPolicy, meterRegistry);
     }
 
     @Bean

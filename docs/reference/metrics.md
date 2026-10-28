@@ -50,7 +50,7 @@ metrics despite the similar names.
 | `milenage_resync_sqn_success` | Counter | — | Successful re-synchronisations |
 | `milenage_resync_sqn_invalid_mac` | Counter | — | Re-synchronisations rejected by a MAC-S mismatch |
 | `milenage_resync_sqn_exception` | Counter | `exception` | Re-synchronisation failures by exception type |
-| `eutran_access_rejected` | Counter | `command` (`air`, `ulr`), `mcc`, `reason` (`denied`, `undecided`) | AIR/ULR rejected by the [`EutranAccessPolicy`](../development/extending.md#eutranaccesspolicy): `denied` → `UNKNOWN_EPS_SUBSCRIPTION`, `undecided` (no decision possible) → `DIAMETER_UNABLE_TO_COMPLY` |
+| `access_rejected` | Counter | `command` (`s6a/air`, `s6a/ulr`, `cx/mar`, `cx/sar`, `swx/mar`, `swx/sar`), `mcc`, `reason` (`denied`, `undecided`) | Access rejected by command and reason, tag `mcc` is only available for S6a |
 
 ## Profiles and subscription data
 

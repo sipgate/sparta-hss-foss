@@ -10,7 +10,6 @@ import com.sipgate.sparta.diameter._3gpp.swx.SwxConstants;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.ServerAssignmentAnswer;
 import com.sipgate.sparta.diameter._3gpp.swx.messages.ServerAssignmentRequest;
 import com.sipgate.sparta.diameter.base.core.DiameterMessageFactory;
-import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.swx.sar.Non3gppUserDataFactory;
 import com.sipgate.sparta.hss.diameter.swx.sar.AaaServerAssignmentChanged;
 import com.sipgate.sparta.hss.event.EventPublisher;
@@ -18,6 +17,7 @@ import com.sipgate.sparta.hss.persistence.ImsiProfileDao;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +37,7 @@ public final class RegisterHandler implements SwxServerAssignTypeHandler {
     private final Non3gppUserDataFactory non3gppUserDataFactory;
     private final EventPublisher eventPublisher;
     private final AccessPolicy accessPolicy;
+    private final MeterRegistry meterRegistry;
 
     public RegisterHandler(
         final SimDao simDao,
@@ -44,7 +45,8 @@ public final class RegisterHandler implements SwxServerAssignTypeHandler {
         final ImsiProfileDao imsiProfileDao,
         final Non3gppUserDataFactory non3gppUserDataFactory,
         final EventPublisher eventPublisher,
-        final AccessPolicy accessPolicy)
+        final AccessPolicy accessPolicy,
+        final MeterRegistry meterRegistry)
     {
         this.simDao = simDao;
         this.locationVowifiDao = locationVowifiDao;
@@ -52,6 +54,7 @@ public final class RegisterHandler implements SwxServerAssignTypeHandler {
         this.non3gppUserDataFactory = non3gppUserDataFactory;
         this.eventPublisher = eventPublisher;
         this.accessPolicy = accessPolicy;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -67,11 +70,13 @@ public final class RegisterHandler implements SwxServerAssignTypeHandler {
         final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
         if (maybeAllowed.isEmpty()) {
             LOGGER.warn("imsi={} SWx/SAR/Register answers with RES_DIAMETER_UNABLE_TO_COMPLY. unable to query ims access policy", imsi);
+            meterRegistry.counter("access_rejected", "command", "swx/sar", "reason", "undecided").increment();
             return SwxServerAssignTypeHandler.stampUserName(request, DiameterMessageFactory
                 .createExperimentalResultAnswer(request, VENDOR_ID_3GPP, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi={} SWx/SAR/Register answers with EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION. access policy denied access", imsi);
+            meterRegistry.counter("access_rejected", "command", "swx/sar", "reason", "denied").increment();
             return SwxServerAssignTypeHandler.stampUserName(request, DiameterMessageFactory
                 .createExperimentalResultAnswer(request, VENDOR_ID_3GPP,
                     SwxConstants.EXP_RES_DIAMETER_ERROR_USER_NO_NON_3GPP_SUBSCRIPTION));

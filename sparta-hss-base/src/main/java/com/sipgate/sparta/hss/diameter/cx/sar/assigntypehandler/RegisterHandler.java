@@ -13,6 +13,7 @@ import com.sipgate.sparta.hss.diameter.cx.sar.identity.PublicIdentity;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
 import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +27,13 @@ public class RegisterHandler extends ServerAssignTypeHandler {
     private final ImsService imsService;
     private final EventPublisher eventPublisher;
     private final AccessPolicy accessPolicy;
+    private final MeterRegistry meterRegistry;
 
-    public RegisterHandler(final ImsService imsService, final EventPublisher eventPublisher, final AccessPolicy accessPolicy) {
+    public RegisterHandler(final ImsService imsService, final EventPublisher eventPublisher, final AccessPolicy accessPolicy, final MeterRegistry meterRegistry) {
         this.imsService = imsService;
         this.eventPublisher = eventPublisher;
         this.accessPolicy = accessPolicy;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -40,10 +43,12 @@ public class RegisterHandler extends ServerAssignTypeHandler {
         final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
         if (maybeAllowed.isEmpty()) {
             LOGGER.warn("imsi={} Cx/SAR/Register answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. unable to query ims access policy", imsi);
+            meterRegistry.counter("access_rejected", "command", "cx/sar", "reason", "undecided").increment();
             return DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi={} Cx/SAR/Register answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. access policy denied access", imsi);
+            meterRegistry.counter("access_rejected", "command", "cx/sar", "reason", "denied").increment();
             return DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
         }
 

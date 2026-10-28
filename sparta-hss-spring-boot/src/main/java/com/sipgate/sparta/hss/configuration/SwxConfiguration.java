@@ -45,9 +45,10 @@ public class SwxConfiguration {
         final Authenticator authenticator,
         final EapAkaPrimeKeyDerivation eapAkaPrimeKeyDerivation,
         final EventPublisher eventPublisher,
-        final AccessPolicy accessPolicy) {
+        final AccessPolicy accessPolicy,
+        final MeterRegistry meterRegistry) {
         return new SwxMultimediaAuthHandler(
-            simDao, locationVowifiDao, authenticator, eapAkaPrimeKeyDerivation, eventPublisher, accessPolicy);
+            simDao, locationVowifiDao, authenticator, eapAkaPrimeKeyDerivation, eventPublisher, accessPolicy, meterRegistry);
     }
 
     @Bean

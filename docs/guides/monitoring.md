@@ -42,8 +42,7 @@ scrape_configs:
 | SQN desync | `rate(milenage_resync_sqn_invalid_mac_total[15m]) > 0` | Repeated re-sync failures indicate a stale/compromised SQN or key issue |
 | Roaming block active | `rate(roaming_blocked_total[5m]) > 0` | Informational while a maintenance block is running |
 | Blocked subscribers not recovering | `rate(roaming_blocked_not_recovered_count[1h]) > 0` | Subscribers stuck out — check the rule set |
-| E-UTRAN access denials | `rate(eutran_access_rejected_total{reason="denied"}[5m]) > 0` | Informational: subscribers the `EutranAccessPolicy` keeps off 4G (`UNKNOWN_EPS_SUBSCRIPTION`) |
-| E-UTRAN policy undecided | `rate(eutran_access_rejected_total{reason="undecided"}[5m]) > 0` | The policy cannot decide (e.g. its backing lookup fails) — subscribers are rejected with `DIAMETER_UNABLE_TO_COMPLY` |
+| Failed access check | `rate(access_rejected_total{reason="undecided"}[5m]) > 0` | The policy cannot decide (e.g. its backing lookup fails) if a subscriber may access the network |
 | Profile push running | `rate(effective_profile_total[5m])` drops to ~0 during a batch run, then spikes | Batch ISD pushes are long-running; see [Profile management](profile-management.md#planning-for-scale) |
 | Outbound queue backlog | `executor_queued_tasks{name=~".*(outbound|inbound).*"} > 50` | The Diameter thread pools (10–40 threads, queue 100) are saturating |
 

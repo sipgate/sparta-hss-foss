@@ -16,6 +16,7 @@ import com.sipgate.sparta.hss.diameter.cx.sar.identity.PublicIdentity;
 import com.sipgate.sparta.hss.diameter.cx.sar.service.ImsService;
 import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,6 +62,8 @@ class RegisterHandlerTest {
     private static final AVPKey KEY_VENDOR_ID = new AVPKey(AVP_VENDOR_ID, 0);
     private static final AVPKey KEY_EXPERIMENTAL_RESULT_CODE = new AVPKey(AVP_EXPERIMENTAL_RESULT_CODE, 0);
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     @Mock
     private ImsService imsService;
 
@@ -77,7 +80,7 @@ class RegisterHandlerTest {
 
     @BeforeEach
     void setUp() {
-        underTest = new RegisterHandler(imsService, eventPublisher, accessPolicy);
+        underTest = new RegisterHandler(imsService, eventPublisher, accessPolicy, meterRegistry);
     }
 
     /**

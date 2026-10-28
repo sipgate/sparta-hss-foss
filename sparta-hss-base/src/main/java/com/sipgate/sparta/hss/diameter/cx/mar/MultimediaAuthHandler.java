@@ -20,6 +20,7 @@ import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.ImsiScscf;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,7 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
     private final EventPublisher eventPublisher;
     private final DiameterSessions diameterSessions;
     private final AccessPolicy accessPolicy;
-
+    private final MeterRegistry meterRegistry;
 
     public MultimediaAuthHandler(
         final SimDao simDao,
@@ -72,7 +73,8 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         final Authenticator authenticator,
         final EventPublisher eventPublisher,
         final DiameterSessions diameterSessions,
-        final AccessPolicy accessPolicy) {
+        final AccessPolicy accessPolicy,
+        final MeterRegistry meterRegistry) {
         this.simDao = simDao;
 
         this.imsiScscfDao = imsiScscfDao;
@@ -80,6 +82,7 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         this.eventPublisher = eventPublisher;
         this.diameterSessions = diameterSessions;
         this.accessPolicy = accessPolicy;
+        this.meterRegistry = meterRegistry;
     }
 
 
@@ -141,10 +144,12 @@ public class MultimediaAuthHandler implements RegisterableDiameterHandler<Multim
         final var maybeAllowed = accessPolicy.isImsAccessAllowed(imsi);
         if (maybeAllowed.isEmpty()) {
             LOGGER.warn("imsi={} Cx/MAR answers with RES_DIAMETER_UNABLE_TO_COMPLY. unable to query ims access policy", imsi);
+            meterRegistry.counter("access_rejected", "command", "cx/mar", "reason", "undecided").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createErrorAnswer(request, RES_DIAMETER_UNABLE_TO_COMPLY));
         }
         if (!maybeAllowed.get()) {
             LOGGER.info("imsi={} Cx/MAR answers with EXP_RES_DIAMETER_ERROR_USER_UNKNOWN. access policy denied access", imsi);
+            meterRegistry.counter("access_rejected", "command", "cx/mar", "reason", "denied").increment();
             throw new DiameterErrorAnswerException(DiameterMessageFactory.createExperimentalResultAnswer(
                 request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
         }

@@ -63,7 +63,7 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 - 4G access is gated by the `EutranAccessPolicy`
   ([extension point](../development/extending.md#eutranaccesspolicy)); a denied
   subscriber gets the `UNKNOWN_EPS_SUBSCRIPTION` error, a policy that cannot decide
-  yields `DIAMETER_UNABLE_TO_COMPLY` (both counted in `eutran_access_rejected`).
+  yields `DIAMETER_UNABLE_TO_COMPLY` (both counted in `access_rejected`).
 - Re-synchronisation for **both** E-UTRAN and UTRAN/GERAN in one request is rejected.
 - Errors: unknown IMSI → `ERROR_USER_UNKNOWN`; vector-generation failure →
   `AUTHENTICATION_DATA_UNAVAILABLE`.
@@ -74,7 +74,7 @@ The main location/subscription command:
 
 1. **E-UTRAN access policy** — the same `EutranAccessPolicy` as for AIR: a denied
    subscriber gets `UNKNOWN_EPS_SUBSCRIPTION` (5420), a policy that cannot decide
-   `DIAMETER_UNABLE_TO_COMPLY` (5012); both are counted in `eutran_access_rejected`.
+   `DIAMETER_UNABLE_TO_COMPLY` (5012); both are counted in `access_rejected`.
 2. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
    MCC is answered `DIAMETER_UNABLE_TO_COMPLY` (5012, a transient signal so UEs
    retry) and counted in `roaming_blocked_emergency`.

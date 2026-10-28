@@ -67,7 +67,7 @@ public class SwxServerAssignmentHandler
     {
         this.meterRegistry = meterRegistry;
         final var deregister = new DeregisterAaaHandler(simDao, locationVowifiDao, eventPublisher);
-        final var register = new RegisterHandler(simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, accessPolicy);
+        final var register = new RegisterHandler(simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, accessPolicy, meterRegistry);
         this.handlers = new HashMap<>();
         this.handlers.put(SERVER_ASSIGNMENT_USER_DEREGISTRATION, deregister);
         this.handlers.put(SERVER_ASSIGNMENT_ADMINISTRATIVE_DEREGISTRATION, deregister);

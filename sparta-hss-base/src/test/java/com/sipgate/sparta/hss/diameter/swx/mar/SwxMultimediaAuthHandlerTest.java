@@ -63,6 +63,9 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -103,7 +106,8 @@ class SwxMultimediaAuthHandlerTest {
     private static final byte[] IK_PRIME = parseHex("3132333435363738393A3B3C3D3E3F40");
     private static final CkIkPrime FIXED_PRIME = new CkIkPrime(CK_PRIME, IK_PRIME);
 
-    @InjectMocks
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     private SwxMultimediaAuthHandler underTest;
 
     @Mock
@@ -126,6 +130,8 @@ class SwxMultimediaAuthHandlerTest {
 
     @BeforeEach
     void setUp() {
+        underTest = new SwxMultimediaAuthHandler(simDao, locationVowifiDao, authenticator, eapAkaPrimeKeyDerivation, eventPublisher, accessPolicy, meterRegistry);
+
         // Default: Sim is present; tests override when needed.
         lenient().when(simDao.getSimByImsiStringForUpdate(IMSI)).thenReturn(Optional.of(new Sim()));
         lenient().when(simDao.getSimByImsiString(IMSI)).thenReturn(Optional.of(new Sim()));

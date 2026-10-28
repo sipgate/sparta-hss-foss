@@ -195,8 +195,8 @@ class UpdateLocationHandlerTest {
   }
 
   private double policyRejections(final String reason) {
-    return meterRegistry.get("eutran_access_rejected")
-        .tags("command", "ulr", "mcc", "262", "reason", reason)
+    return meterRegistry.get("access_rejected")
+        .tags("command", "s6a/ulr", "mcc", "262", "reason", reason)
         .counter()
         .count();
   }

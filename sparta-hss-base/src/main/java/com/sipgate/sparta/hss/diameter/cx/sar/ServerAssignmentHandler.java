@@ -124,7 +124,7 @@ public class ServerAssignmentHandler implements RegisterableDiameterHandler<Serv
         handlers.put(SERVER_ASSIGNMENT_TIMEOUT_DEREGISTRATION_STORE_SERVER_NAME, deregisterNotStored);
         handlers.put(SERVER_ASSIGNMENT_USER_DEREGISTRATION_STORE_SERVER_NAME, deregisterNotStored);
 
-        final ServerAssignTypeHandler register = new ValidatingHandler(new RegisterHandler(imsService, eventPublisher, accessPolicy), simService);
+        final ServerAssignTypeHandler register = new ValidatingHandler(new RegisterHandler(imsService, eventPublisher, accessPolicy, meterRegistry), simService);
         handlers.put(SERVER_ASSIGNMENT_REGISTRATION, register);
         handlers.put(SERVER_ASSIGNMENT_RE_REGISTRATION, register);
         return handlers;
