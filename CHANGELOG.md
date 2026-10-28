@@ -7,21 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> **Important:** You need to carefully migrate your database. 
+> The Column `Imsi.state` is dropped and the column `Sim.isActive` is added
+> with a default of `0`. If you do not migrate carefully you might end up with
+> a bunch of inactive SIMs
+
 ### Added
 
-- README: full effective-profile decision table (per-ULR matrix
-  and summary view) for `imsi_profile`/`tac_profile` assignments.
-- Column `isActive` for SIM entities. Will be used for a new implementation of `EutranAccessPolicy` later. 
+- Column `isActive` for SIMs for new implementation of `EutranAccessPolicy`. 
 - Metric `eutran_access_rejected` (`command`, `mcc`, `reason`) counting AIR/ULR
   rejections by the `EutranAccessPolicy`.
-
-### Changed
-
-...
+- added `sipgate.eutran-access-policy` property. 
 
 ### Removed
 
-- Unused column `state` for IMSI entities. Make sure your code does not use it.
+- Unused column `state` for IMSI entities.
 
 ## [1.0.0] - 2026-09-22
 
@@ -44,5 +44,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (SAR, MAR, RTR), S6a (AIR, ULR, ISD, NOR, PUR) and harness connectivity.
   Individual cases run via `make run-e2e-single TEST=...`.
 
-[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...HEAD
 [1.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...1.0.0
