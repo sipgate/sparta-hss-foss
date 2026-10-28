@@ -1,4 +1,6 @@
-package com.sipgate.sparta.hss.diameter.s6a.air;
+package com.sipgate.sparta.hss.service.accessPolicy;
+
+import com.sipgate.sparta.hss.diameter.s6a.air.AuthenticationInfoHandler;
 
 import java.util.Optional;
 
@@ -10,12 +12,9 @@ import java.util.Optional;
 /// steering gateway). By default every subscriber is allowed.
 ///
 /// A return value of Optional.empty<>() indicates that no decision can be made for this IMSI, eg could not be found.
-@FunctionalInterface
-public interface EutranAccessPolicy {
+public interface AccessPolicy {
 
     Optional<Boolean> isEutranAccessAllowed(String imsi, String mcc);
 
-    static EutranAccessPolicy allowAll() {
-        return (imsi, mcc) -> Optional.of(true);
-    }
+    Optional<Boolean> isImsAccessAllowed(String imsi);
 }

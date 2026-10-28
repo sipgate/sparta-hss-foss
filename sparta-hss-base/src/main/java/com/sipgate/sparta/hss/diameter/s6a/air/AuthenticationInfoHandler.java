@@ -30,6 +30,7 @@ import com.sipgate.sparta.hss.diameter.common.AnswerFactory;
 import com.sipgate.sparta.hss.diameter.common.auth.*;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.persistence.entities.Sim;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
@@ -73,18 +74,18 @@ public class AuthenticationInfoHandler
     private static final AVPKey KEY_INTEGRITY_KEY = new AVPKey(CxDxConstants.AVP_INTEGRITY_KEY, VENDOR_ID_3GPP);
 
     private final SimDao simDao;
-    private final EutranAccessPolicy eutranAccessPolicy;
+    private final AccessPolicy accessPolicy;
     private final Authenticator authenticator;
     private final MeterRegistry meterRegistry;
 
     public AuthenticationInfoHandler(
         final SimDao simDao,
-        final EutranAccessPolicy eutranAccessPolicy,
+        final AccessPolicy accessPolicy,
         final Authenticator authenticator,
         final MeterRegistry meterRegistry)
     {
         this.simDao = simDao;
-        this.eutranAccessPolicy = eutranAccessPolicy;
+        this.accessPolicy = accessPolicy;
         this.authenticator = authenticator;
         this.meterRegistry = meterRegistry;
     }
@@ -121,7 +122,7 @@ public class AuthenticationInfoHandler
         }
 
         final var visitedPlmn = MncMccFormatter.snIdToMccMnc(request.getVisitedPlmnId());
-        final var maybeAllowed = eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
+        final var maybeAllowed = accessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
         if(maybeAllowed.isEmpty()) {
             LOGGER.warn("unable to query 4g access policy for imsi {}", imsi);
             meterRegistry.counter("eutran_access_rejected", "command", "air", "mcc", visitedPlmn.mcc(), "reason", "undecided").increment();

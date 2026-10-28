@@ -20,7 +20,7 @@ import com.sipgate.sparta.diameter.base.session.DiameterErrorAnswerException;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.client.RegisterableDiameterHandler;
 import com.sipgate.sparta.hss.diameter.common.auth.MncMccFormatter;
-import com.sipgate.sparta.hss.diameter.s6a.air.EutranAccessPolicy;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationEvent;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataFactory;
 import com.sipgate.sparta.hss.event.EventPublisher;
@@ -54,7 +54,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
     private final BlockRoamingService blockRoamingService;
     private final EmergencyRoamingRestriction emergencyRoamingRestriction;
     private final DiameterSessions diameterSessions;
-    private final EutranAccessPolicy eutranAccessPolicy;
+    private final AccessPolicy accessPolicy;
 
     public UpdateLocationHandler(
         final SimDao simDao,
@@ -66,7 +66,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         final EventPublisher eventPublisher,
         final BlockRoamingService blockRoamingService,
         final EmergencyRoamingRestriction emergencyRoamingRestriction,
-        final DiameterSessions diameterSessions, final EutranAccessPolicy eutranAccessPolicy) {
+        final DiameterSessions diameterSessions, final AccessPolicy accessPolicy) {
         this.simDao = simDao;
         this.locationLteDao = locationLteDao;
         this.imsiProfileDao = imsiProfileDao;
@@ -77,7 +77,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         this.blockRoamingService = blockRoamingService;
         this.emergencyRoamingRestriction = emergencyRoamingRestriction;
         this.diameterSessions = diameterSessions;
-        this.eutranAccessPolicy = eutranAccessPolicy;
+        this.accessPolicy = accessPolicy;
     }
 
     private static String extractTac(final UpdateLocationRequest request) {
@@ -169,7 +169,7 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
 
         LOGGER.info("imsi: {} on VisitedPlmnId: {} from mme {} ", imsi, visitedPlmn.plmn(), request.getOriginHost());
 
-        final var maybeAllowed = eutranAccessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
+        final var maybeAllowed = accessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
 
         if (maybeAllowed.isEmpty()) {
             LOGGER.info("imsi: {} rejected - access policy lookup failure (mcc {})", imsi, visitedPlmn.mcc());

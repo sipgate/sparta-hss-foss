@@ -64,7 +64,7 @@ an empty result (no decision possible, e.g. the backing lookup failed) with
 [`eutran_access_rejected`](../reference/metrics.md#authentication) metric.
 
 The Spring Boot module ships two implementations, selected by
-[`sipgate.eutran-access-policy`](../reference/configuration.md#authentication):
+[`sipgate.access-policy`](../reference/configuration.md#authentication):
 `subscription-state` (the SIM's `active` flag) and `allow-all`. There is no
 fallback: with the property unset and no bean of your own, the S6a handlers fail to
 wire. To use your own `EutranAccessPolicy` bean, leave the property unset — a

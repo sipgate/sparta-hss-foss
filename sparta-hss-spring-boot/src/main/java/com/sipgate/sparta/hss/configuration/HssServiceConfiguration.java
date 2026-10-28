@@ -4,14 +4,15 @@ import com.sipgate.sparta.hss.diameter.common.auth.Authenticator;
 import com.sipgate.sparta.hss.diameter.common.auth.EapAkaPrimeKeyDerivation;
 import com.sipgate.sparta.hss.diameter.common.auth.MilenageAuthenticator;
 import com.sipgate.sparta.hss.diameter.common.auth.RandomGenerator;
-import com.sipgate.sparta.hss.diameter.s6a.air.EutranAccessPolicy;
-import com.sipgate.sparta.hss.diameter.s6a.air.SubscriptionStateAccessPolicy;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
+import com.sipgate.sparta.hss.service.accessPolicy.SubscriptionStateAccessPolicy;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataEncoder;
 import com.sipgate.sparta.hss.event.EventPublisher;
 import com.sipgate.sparta.hss.persistence.BlockRoamingDao;
 import com.sipgate.sparta.hss.persistence.LocationLteDao;
 import com.sipgate.sparta.hss.persistence.MsisdnScscfDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AllowAllAccessPolicy;
 import com.sipgate.sparta.hss.service.roaming.BlockRoamingService;
 import com.sipgate.sparta.hss.service.volte.location.LocationService;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -26,7 +27,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 /// Provides the base module's services and its extension points as beans.
 ///
-/// The extension points ([EventPublisher], [EutranAccessPolicy], [Authenticator]) are
+/// The extension points ([EventPublisher], [AccessPolicy], [Authenticator]) are
 /// conditional: an application built on top of this module replaces them by defining its own bean.
 @AutoConfiguration
 @EnableConfigurationProperties(AucProperties.class)
@@ -41,14 +42,14 @@ public class HssServiceConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "sipgate.eutran-access-policy", havingValue = "allow-all")
-    public EutranAccessPolicy allowAllAccessPolicy() {
-        return EutranAccessPolicy.allowAll();
+    @ConditionalOnProperty(name = "sipgate.access-policy", havingValue = "allow-all")
+    public AccessPolicy allowAllAccessPolicy() {
+        return new AllowAllAccessPolicy();
     }
 
     @Bean
-    @ConditionalOnProperty(name = "sipgate.eutran-access-policy", havingValue = "subscription-state")
-    public EutranAccessPolicy subscriptionStateAccessPolicy(final SimDao simDao) {
+    @ConditionalOnProperty(name = "sipgate.access-policy", havingValue = "subscription-state")
+    public AccessPolicy subscriptionStateAccessPolicy(final SimDao simDao) {
         return new SubscriptionStateAccessPolicy(simDao);
     }
 

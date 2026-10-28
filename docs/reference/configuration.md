@@ -44,20 +44,19 @@ Whether the `sim` table's `op` column holds the pre-computed **OPc** or the raw
 - `opc` (default) — TS 35.205 recommendation; no derivation cost per authentication
 - `op` — OPc is derived from (Ki, OP) on every authentication
 
-### `sipgate.eutran-access-policy`
+### `sipgate.access-policy`
 
-Environment variable: `SIPGATE_EUTRAN_ACCESS_POLICY`.
+Environment variable: `SIPGATE_ACCESS_POLICY`.
 
-Which built-in [`EutranAccessPolicy`](../development/extending.md#eutranaccesspolicy)
-gates 4G access on AIR and ULR:
+Which built-in [`AccessPolicy`](../development/extending.md#eutranaccesspolicy) gates 4G and IMS access:
 
 - `subscription-state` (shipped `application.yaml`) — the `sim` table's `isActive`
   flag; an unknown IMSI yields no decision (`DIAMETER_UNABLE_TO_COMPLY`)
 - `allow-all` — every subscriber is allowed
 
-There is no code default: unset, the HSS does not start unless the application
-defines its own `EutranAccessPolicy` bean. Such an application must leave the
-property unset — a built-in policy next to its own bean fails the start.
+There is no code default: unset, the HSS does not start unless the application defines its own
+`AccessPolicy` bean. Such an application must leave the property unset — a built-in policy next to
+its own bean fails the start.
 
 ## HTTP admin endpoints
 

@@ -51,6 +51,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.xml.bind.DatatypeConverter;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,7 +122,7 @@ class AuthenticationInfoHandlerTest {
     private SimDao simDao;
 
     @Mock
-    private EutranAccessPolicy eutranAccessPolicy;
+    private AccessPolicy accessPolicy;
 
     @Mock
     private RandomGenerator randGen;
@@ -128,7 +130,7 @@ class AuthenticationInfoHandlerTest {
     @BeforeEach
     void setUp() {
         final var authenticator = new MilenageAuthenticator(randGen, new SimpleMeterRegistry(), StoredKeyFormat.OP);
-        underTest = new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator, meterRegistry);
+        underTest = new AuthenticationInfoHandler(simDao, accessPolicy, authenticator, meterRegistry);
     }
 
     /**
@@ -186,11 +188,11 @@ class AuthenticationInfoHandlerTest {
     }
 
     private void subscriberHasNotAnyApnConfiguration() {
-        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(false));
+        when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(false));
     }
 
     private void subscriberHasApnConfiguration() {
-        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
+        when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
     }
 
     private double policyRejections(final String reason) {
@@ -201,7 +203,7 @@ class AuthenticationInfoHandlerTest {
     }
 
     private void accessPolicyCannotDecide() {
-        when(eutranAccessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.empty());
+        when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.empty());
     }
 
     private void randomGeneratorReturnsFixedRand() {

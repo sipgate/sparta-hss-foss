@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Changed
+
+* Renamed configuration property `sipgate.eutran-access-policy` to `sipgate.access-policy`.
+
 ## [2.0.0] - 2026-10-28
 
 > **Important:** You need to carefully migrate your database. 

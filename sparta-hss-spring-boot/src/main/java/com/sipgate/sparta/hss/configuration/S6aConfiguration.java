@@ -4,7 +4,7 @@ import com.sipgate.sparta.hss.diameter.client.DiameterConfig;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.auth.Authenticator;
 import com.sipgate.sparta.hss.diameter.s6a.air.AuthenticationInfoHandler;
-import com.sipgate.sparta.hss.diameter.s6a.air.EutranAccessPolicy;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationOutboundListener;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataEncoder;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataFactory;
@@ -53,10 +53,10 @@ public class S6aConfiguration {
     @Bean
     public AuthenticationInfoHandler authenticationInfoHandler(
         final SimDao simDao,
-        final EutranAccessPolicy eutranAccessPolicy,
+        final AccessPolicy accessPolicy,
         final Authenticator authenticator,
         final MeterRegistry meterRegistry) {
-        return new AuthenticationInfoHandler(simDao, eutranAccessPolicy, authenticator, meterRegistry);
+        return new AuthenticationInfoHandler(simDao, accessPolicy, authenticator, meterRegistry);
     }
 
     @Bean
@@ -71,12 +71,12 @@ public class S6aConfiguration {
         final BlockRoamingService blockRoamingService,
         final EmergencyRoamingRestriction emergencyRoamingRestriction,
         final DiameterSessions diameterSessions,
-        final EutranAccessPolicy eutranAccessPolicy
+        final AccessPolicy accessPolicy
     ) {
         return new UpdateLocationHandler(
             simDao, locationLteDao, imsiProfileDao, tacProfileDao, subscriptionDataFactory,
             meterRegistry, eventPublisher, blockRoamingService, emergencyRoamingRestriction,
-            diameterSessions, eutranAccessPolicy);
+            diameterSessions, accessPolicy);
     }
 
     @Bean
