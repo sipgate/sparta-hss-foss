@@ -169,6 +169,18 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
 
         LOGGER.info("imsi: {} on VisitedPlmnId: {} from mme {} ", imsi, visitedPlmn.plmn(), request.getOriginHost());
 
+        final var maybeMsisdn = getMsisdnByImsi(imsi);
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("- getMsisdnByImsi {} ", maybeMsisdn.orElse("?"));
+        }
+
+        if (maybeMsisdn.isEmpty()) {
+            LOGGER.debug("- msisdn not found for imsi {}", imsi);
+            throw new DiameterErrorAnswerException(
+                DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
+        }
+        final var msisdn = maybeMsisdn.get();
+
         final var maybeAllowed = accessPolicy.isEutranAccessAllowed(imsi, visitedPlmn.mcc());
 
         if (maybeAllowed.isEmpty()) {
@@ -201,18 +213,6 @@ public class UpdateLocationHandler implements RegisterableDiameterHandler<Update
         }
 
         blockRoamingService.recordAllowed(imsi, visitedPlmn.mcc());
-
-        final var maybeMsisdn = getMsisdnByImsi(imsi);
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("- getMsisdnByImsi {} ", maybeMsisdn.orElse("?"));
-        }
-
-        if (maybeMsisdn.isEmpty()) {
-            LOGGER.debug("- msisdn not found for imsi {}", imsi);
-            throw new DiameterErrorAnswerException(
-                DiameterMessageFactory.createExperimentalResultAnswer(request, VENDOR_ID_3GPP, _3gppConstants.EXP_RES_DIAMETER_ERROR_USER_UNKNOWN));
-        }
-        final var msisdn = maybeMsisdn.get();
 
         String tac = null;  // will be overwritten if request is an "s6a"
         if (isS6aRequest(request)) {
