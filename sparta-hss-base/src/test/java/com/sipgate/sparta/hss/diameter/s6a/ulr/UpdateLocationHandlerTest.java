@@ -13,6 +13,7 @@ import static com.sipgate.sparta.diameter.base.core.DiameterConstants.RES_DIAMET
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -125,6 +126,7 @@ class UpdateLocationHandlerTest {
   @Test
   void it_returns_roaming_not_allowed_when_blocked() {
     // GIVEN
+    when(simDao.getSimByImsiString("999990000104857")).thenReturn(Optional.of(buildSimWithMsisdn("9999990214857")));
     when(blockRoamingService.isBlocked("999990000104857", "262", "07")).thenReturn(true);
     when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
 
@@ -138,6 +140,7 @@ class UpdateLocationHandlerTest {
   @Test
   void it_returns_unable_to_comply_when_emergency_restriction_blocks_the_mcc() {
     // GIVEN
+    when(simDao.getSimByImsiString("999990000104857")).thenReturn(Optional.of(buildSimWithMsisdn("9999990214857")));
     when(emergencyRoamingRestriction.blocksMcc("262")).thenReturn(true);
     when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
 
@@ -152,10 +155,9 @@ class UpdateLocationHandlerTest {
   }
 
   @Test
-  void it_returns_user_unknown_when_msisdn_not_found() {
-    // GIVEN
-    when(blockRoamingService.isBlocked(anyString(), anyString(), anyString())).thenReturn(false);
-    when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.of(true));
+  void it_returns_user_unknown_when_imsi_not_found() {
+    // GIVEN the default policy cannot decide for an IMSI without a SIM
+    lenient().when(accessPolicy.isEutranAccessAllowed(anyString(), anyString())).thenReturn(Optional.empty());
     when(simDao.getSimByImsiString(anyString())).thenReturn(Optional.empty());
 
     // WHEN
@@ -163,11 +165,13 @@ class UpdateLocationHandlerTest {
 
     // THEN
     assertExperimentalErrorAnswer(answer, EXP_RES_DIAMETER_ERROR_USER_UNKNOWN);
+    verifyNoInteractions(accessPolicy, blockRoamingService, locationLteDao);
   }
 
   @Test
   void it_returns_unknown_eps_subscription_when_access_policy_denies() {
     // GIVEN
+    when(simDao.getSimByImsiString("999990000104857")).thenReturn(Optional.of(buildSimWithMsisdn("9999990214857")));
     when(accessPolicy.isEutranAccessAllowed("999990000104857", "262")).thenReturn(Optional.of(false));
 
     // WHEN
@@ -183,6 +187,7 @@ class UpdateLocationHandlerTest {
   @Test
   void it_returns_unable_to_comply_when_access_policy_cannot_decide() {
     // GIVEN
+    when(simDao.getSimByImsiString("999990000104857")).thenReturn(Optional.of(buildSimWithMsisdn("9999990214857")));
     when(accessPolicy.isEutranAccessAllowed("999990000104857", "262")).thenReturn(Optional.empty());
 
     // WHEN

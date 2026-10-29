@@ -82,16 +82,16 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 
 The main location/subscription command:
 
-1. **access policy** — the same `AccessPolicy` as for AIR: a denied subscriber gets
+1. The MSISDN is resolved (unknown subscriber → `ERROR_USER_UNKNOWN`).
+2. **access policy** — the same `AccessPolicy` as for AIR: a denied subscriber gets
    `UNKNOWN_EPS_SUBSCRIPTION` (5420), a policy that cannot decide `DIAMETER_UNABLE_TO_COMPLY`
    (5012); both are counted in `access_rejected`.
-2. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
+3. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
    MCC is answered `DIAMETER_UNABLE_TO_COMPLY` (5012, a transient signal so UEs
    retry) and counted in `roaming_blocked_emergency`.
-3. **Roaming rules** — blocked subscribers get `ROAMING_NOT_ALLOWED` (5004) and a
+4. **Roaming rules** — blocked subscribers get `ROAMING_NOT_ALLOWED` (5004) and a
    [blocked event](../concepts/roaming.md#blocked-events-and-recovery) is recorded;
    allowed subscribers clear their pending blocked events.
-4. The MSISDN is resolved (unknown subscriber → `ERROR_USER_UNKNOWN`).
 5. For S6a requests (ULR-Flags bit 1 set) the MME location is stored (host, realm,
    visited PLMN, TAC from the IMEI); if the MME **changed**, a CLR is sent to the old
    MME **(out)**.
