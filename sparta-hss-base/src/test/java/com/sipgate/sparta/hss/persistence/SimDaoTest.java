@@ -64,7 +64,7 @@ class SimDaoTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void itSelectsSimByIccid(final boolean isActive) {
+    void itSelectsSimByIccidRegardlessOfActiveState(final boolean isActive) {
         // GIVEN
         final var sim = new Sim();
         sim.setSecretKey(new byte[]{});

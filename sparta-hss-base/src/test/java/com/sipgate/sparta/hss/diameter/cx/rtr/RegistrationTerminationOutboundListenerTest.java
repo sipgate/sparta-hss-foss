@@ -28,9 +28,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/// The listener owns the `imsi_scscf` and `location_ip_sm_gw` lifecycle on deactivation: it
-/// fetches the stored S-CSCF itself, sends the RTR, then clears the rows — the event carries
-/// only the subscriber identity.
 @ExtendWith(MockitoExtension.class)
 class RegistrationTerminationOutboundListenerTest {
 

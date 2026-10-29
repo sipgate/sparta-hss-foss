@@ -27,13 +27,10 @@ public class CancelLocationOutboundListener extends BaseOutboundListener {
         onEvent(event);
     }
 
-    /// For every IMSI of the deactivated SIM that had an MME stored in `location_lte`, sends a CLR
-    /// with Cancellation-Type `SUBSCRIPTION_WITHDRAWAL` (the HSS-initiated detach of TS 23.401
-    /// §5.3.8.4, equivalent to the one in
-    /// [com.sipgate.sparta.hss.diameter.s6a.ulr.UpdateLocationHandler]) and removes the row. The
-    /// re-attach flag stays unset, so the device does not immediately re-attach into the
-    /// rejection. The listener owns the `location_lte` lifecycle; the event carries no per-peer
-    /// data.
+    /// Detaches the IMSIs of the deactivated SIM from their stored MME, because a barred SIM
+    /// must be cut off immediately, not at the next attach: CLR with Cancellation-Type
+    /// `SUBSCRIPTION_WITHDRAWAL` without the re-attach flag (TS 23.401 §5.3.8.4), then the row
+    /// is removed.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {

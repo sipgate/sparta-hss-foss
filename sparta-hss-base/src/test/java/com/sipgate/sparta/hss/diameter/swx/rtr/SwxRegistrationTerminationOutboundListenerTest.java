@@ -27,9 +27,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/// The listener owns the `location_vowifi` lifecycle on deactivation: it fetches the stored AAA
-/// server itself, sends the RTR, then clears the assignment — the event carries only the
-/// subscriber identity.
 @ExtendWith(MockitoExtension.class)
 class SwxRegistrationTerminationOutboundListenerTest {
 

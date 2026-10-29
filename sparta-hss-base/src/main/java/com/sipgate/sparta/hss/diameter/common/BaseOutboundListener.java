@@ -7,9 +7,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/// Sends outbound requests over the Diameter client and logs the outcome: the request carried by
-/// a [BaseEvent], or requests a subclass builds itself from a domain event (e.g. on SIM
-/// deactivation).
+/// Sends the outbound request carried by a [BaseEvent] over the Diameter client and logs the
+/// outcome.
 ///
 /// Answer handling is fire-and-forget: the DRA routes the request by Destination-Host/Realm, and
 /// the HSS does not act on the answer beyond logging.
@@ -31,8 +30,7 @@ public abstract class BaseOutboundListener {
         send(event.getRequest(), event.getContext());
     }
 
-    /// Sends a request built by the producer ([#onEvent]) or by the listener itself from a domain
-    /// event; `context` is a short description for logging (e.g. `"imsi=..., mme=..."`).
+    /// Sends the request over the Diameter client.
     protected void send(final OutgoingRequest<? extends Answer> request, final String context) {
         // The Session-Id (RFC 6733 §8.8) is a session-scoped identifier owned by the session layer:
         // the producer builds the command content, the listener stamps the Session-Id before sending.
