@@ -20,7 +20,7 @@ Dispatched per `Server-Assignment-Type`, which is counted in
 
 | Type | Behaviour | Answer |
 |------|-----------|--------|
-| `REGISTRATION`, `RE_REGISTRATION` | Store the S-CSCF assignment and the IP-SM-GW/Serving-Node; publish `ScscfAssignmentChanged` | 2001 with the per-subscriber user profile (from the [user-profile template](xml-profiles.md#cx-user-profile-template)), omitted when the request sets `User-Data-Already-Available` |
+| `REGISTRATION`, `RE_REGISTRATION` | IMS access is gated by the `AccessPolicy` ([extension point](../development/extending.md#accesspolicy)): a denied subscriber — or a policy that cannot decide — gets `ERROR_USER_UNKNOWN` (counted in `access_rejected`), no state change. Otherwise store the S-CSCF assignment and the IP-SM-GW/Serving-Node; publish `ScscfAssignmentChanged` | 2001 with the per-subscriber user profile (from the [user-profile template](xml-profiles.md#cx-user-profile-template)), omitted when the request sets `User-Data-Already-Available` |
 | `USER_DEREGISTRATION`, `ADMINISTRATIVE_DEREGISTRATION`, `TIMEOUT_DEREGISTRATION`, `DEREGISTRATION_TOO_MUCH_DATA` | Clear the S-CSCF assignment and the IP-SM-GW — but only when the stored S-CSCF equals the request's `Server-Name`; publish `ScscfAssignmentChanged` | 2001 |
 | `USER_DEREGISTRATION_STORE_SERVER_NAME`, `TIMEOUT_DEREGISTRATION_STORE_SERVER_NAME` | The same clearing behaviour; only the answer differs | experimental success `SERVER_NAME_NOT_STORED` |
 | `AUTHENTICATION_FAILURE`, `AUTHENTICATION_TIMEOUT` | No state change | 2001 |
@@ -37,6 +37,11 @@ IMS authentication (AKAv1-MD5):
   `SIP-Authenticate = RAND‖AUTN`.
 - The SIM row is locked for the duration of vector generation (SQN
   read-increment-write) so concurrent MARs for one IMSI cannot overlap SQNs.
+- IMS access is gated by the `AccessPolicy`
+  ([extension point](../development/extending.md#accesspolicy)): a denied subscriber
+  gets `ERROR_USER_UNKNOWN`, a policy that cannot decide `DIAMETER_UNABLE_TO_COMPLY`
+  (both counted in `access_rejected`); the check runs after the subscriber lookup,
+  before any vector is built.
 - If the subscriber is already registered on a **different** S-CSCF, the old one
   receives an RTR (reason `NEW_SERVER_ASSIGNED`) before the answer is sent **(out)**.
 
@@ -60,9 +65,9 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 - E-UTRAN vectors: RAND, XRES, AUTN (AMF `0x8000`), KASME (derived from the
   Visited-PLMN-Id).
 - UTRAN/GERAN vectors: RAND, XRES, AUTN (AMF `0x0000`), CK, IK.
-- 4G access is gated by the `EutranAccessPolicy`
-  ([extension point](../development/extending.md#eutranaccesspolicy)); a denied
-  subscriber gets the `UNKNOWN_EPS_SUBSCRIPTION` error, a policy that cannot decide
+- 4G access is gated by the `AccessPolicy`
+  ([extension point](../development/extending.md#accesspolicy)); a denied subscriber
+  gets the `UNKNOWN_EPS_SUBSCRIPTION` error, a policy that cannot decide
   yields `DIAMETER_UNABLE_TO_COMPLY` (both counted in `access_rejected`).
 - Re-synchronisation for **both** E-UTRAN and UTRAN/GERAN in one request is rejected.
 - Errors: unknown IMSI → `ERROR_USER_UNKNOWN`; vector-generation failure →
@@ -72,9 +77,9 @@ Peer: MME (S6a) / SGSN (S6d), via DRA.
 
 The main location/subscription command:
 
-1. **E-UTRAN access policy** — the same `EutranAccessPolicy` as for AIR: a denied
-   subscriber gets `UNKNOWN_EPS_SUBSCRIPTION` (5420), a policy that cannot decide
-   `DIAMETER_UNABLE_TO_COMPLY` (5012); both are counted in `access_rejected`.
+1. **access policy** — the same `AccessPolicy` as for AIR: a denied subscriber gets
+   `UNKNOWN_EPS_SUBSCRIPTION` (5420), a policy that cannot decide `DIAMETER_UNABLE_TO_COMPLY`
+   (5012); both are counted in `access_rejected`.
 2. **Emergency MCC allowlist** (disabled by default) — a ULR from a non-allowlisted
    MCC is answered `DIAMETER_UNABLE_TO_COMPLY` (5012, a transient signal so UEs
    retry) and counted in `roaming_blocked_emergency`.
@@ -117,7 +122,7 @@ The result codes sparta-hss answers with most often:
 
 | Code | Meaning                                  | Where used |
 |------|------------------------------------------|------------|
-| 5001 | `ERROR_USER_UNKNOWN`                     | Any command for an unknown IMSI (AIR, ULR, PUR, NOR, Cx/SWx SAR, Cx/SWx MAR) |
+| 5001 | `ERROR_USER_UNKNOWN`                     | Any command for an unknown IMSI (AIR, ULR, PUR, NOR, Cx/SWx SAR, Cx/SWx MAR); Cx MAR and Cx SAR `REGISTRATION`/`RE_REGISTRATION` with IMS access denied or undecided by the `AccessPolicy` |
 | 5002 | `IDENTITIES_DONT_MATCH`                  | Cx SAR where the Public-Identity is not associated with the IMSI |
 | 5004 | `ROAMING_NOT_ALLOWED`                    | ULR blocked by the roaming rules |
 | 5005 | `IDENTITY_ALREADY_REGISTERED`            | SWx MAR while another AAA server is assigned and no `AAA-Failure-Indication`; SWx SAR on any AAA-server mismatch (register or de-register) |
@@ -125,7 +130,8 @@ The result codes sparta-hss answers with most often:
 | 5011 | `FEATURE_UNSUPPORTED`                    | Cx SAR `UNREGISTERED_USER` |
 | 5012 | `SERVING_NODE_FEATURE_UNSUPPORTED`       | Cx/SWx MAR, internal failure during vector generation |
 | 4181 | `AUTHENTICATION_DATA_UNAVAILABLE`        | AIR, vector generation failed |
-| 5420 | `UNKNOWN_EPS_SUBSCRIPTION`               | AIR/ULR, 4G access denied by the `EutranAccessPolicy`; AIR without a Visited-PLMN-Id |
+| 5420 | `UNKNOWN_EPS_SUBSCRIPTION`               | AIR/ULR, 4G access denied by the `AccessPolicy`; AIR without a Visited-PLMN-Id |
+| 5450 | `USER_NO_NON_3GPP_SUBSCRIPTION`          | SWx MAR/SAR `REGISTRATION`/`RE_REGISTRATION`, IMS access denied by the `AccessPolicy` |
 
 In addition, standard Diameter error codes are used where noted
 (`DIAMETER_UNABLE_TO_COMPLY`, `DIAMETER_MISSING_AVP`, `DIAMETER_INVALID_AVP_VALUE`).
@@ -143,7 +149,7 @@ The requesting AAA server is identified by the request's `Origin-Host`
 
 | Type | Behaviour | Answer |
 |------|-----------|--------|
-| `REGISTRATION`, `RE_REGISTRATION` | Store the AAA-server assignment when none is present and publish `AaaServerAssignmentChanged`; a re-registration from the same server is idempotent. The answer's profile is the per-IMSI assignment, or `default` | 2001 with `Non-3GPP-User-Data` from the [subscription-data profiles](xml-profiles.md#subscription-data-profiles) |
+| `REGISTRATION`, `RE_REGISTRATION` | IMS access is gated by the `AccessPolicy` ([extension point](../development/extending.md#accesspolicy)): a denied subscriber gets `USER_NO_NON_3GPP_SUBSCRIPTION` (5450), a policy that cannot decide `DIAMETER_UNABLE_TO_COMPLY` (both counted in `access_rejected`), no state change. Otherwise store the AAA-server assignment when none is present and publish `AaaServerAssignmentChanged`; a re-registration from the same server is idempotent. The answer's profile is the per-IMSI assignment, or `default` | 2001 with `Non-3GPP-User-Data` from the [subscription-data profiles](xml-profiles.md#subscription-data-profiles) |
 | `REGISTRATION`, `RE_REGISTRATION` from a **different** AAA server | No state change | `IDENTITY_ALREADY_REGISTERED`, carrying the stored `3GPP-AAA-Server-Name` |
 | `USER_DEREGISTRATION`, `ADMINISTRATIVE_DEREGISTRATION`, `AUTHENTICATION_FAILURE`, `AUTHENTICATION_TIMEOUT` | Clear the AAA-server assignment and publish `AaaServerAssignmentChanged` | 2001, no user data |
 | the same four, when the stored AAA server is **not** the requester | No state change | `IDENTITY_ALREADY_REGISTERED`, carrying the stored `3GPP-AAA-Server-Name` |
@@ -161,6 +167,11 @@ VoWiFi authentication:
 - `EAP-AKA'` additionally requires an ANID (missing → `MISSING_AVP`); CK'/IK' are
   derived via RFC 9048 and bound to the ANID.
 - The answer carries CK(/CK'), IK(/IK'), XRES and `SIP-Authenticate = RAND‖AUTN`.
+- IMS access is gated by the `AccessPolicy`
+  ([extension point](../development/extending.md#accesspolicy)): a denied subscriber
+  gets `USER_NO_NON_3GPP_SUBSCRIPTION` (5450), a policy that cannot decide
+  `DIAMETER_UNABLE_TO_COMPLY` (both counted in `access_rejected`); the check runs
+  after the subscriber lookup, before the AAA-server conflict handling.
 - **AAA-server conflict**: if a different AAA server is already assigned, the answer
   is `IDENTITY_ALREADY_REGISTERED` — **unless** the request carries an
   `AAA-Failure-Indication`, in which case the assignment is overwritten and the MAR
