@@ -24,8 +24,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-/// The listener owns the `location_lte` lifecycle on deactivation: it fetches the stored MME
-/// itself, sends the CLR, then removes the row — the event carries only the subscriber identity.
 @ExtendWith(MockitoExtension.class)
 class CancelLocationOutboundListenerTest {
 

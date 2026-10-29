@@ -29,10 +29,9 @@ public class SwxRegistrationTerminationOutboundListener extends BaseOutboundList
         this.locationVowifiDao = locationVowifiDao;
     }
 
-    /// For every IMSI of the deactivated SIM that had a 3GPP AAA server stored in
-    /// `location_vowifi`, sends an RTR with Reason-Code `PERMANENT_TERMINATION`
-    /// (TS 29.273 §8.1.2.2.3; same Deregistration-Reason as Cx) and clears the assignment. The
-    /// listener owns the `location_vowifi` lifecycle; the event carries no per-peer data.
+    /// Ends the SWx registration of the deactivated SIM's IMSIs, so the VoWiFi attach does not
+    /// outlive the subscription: RTR with Reason-Code `PERMANENT_TERMINATION`
+    /// (TS 29.273 §8.1.2.2.3), then the assignment is cleared.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {

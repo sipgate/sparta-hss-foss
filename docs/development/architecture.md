@@ -71,23 +71,16 @@ wait: in most cases waiting only makes the transaction slower with no benefit.
 ## Subscription state
 
 `SubscriptionStateService` (`com.sipgate.sparta.hss.service.subscription`) activates or deactivates a SIM by
-ICCID. Deactivation flips `sim.isActive` and publishes one `SimDeactivated` event carrying
-only the subscriber's identity (ICCID, MSISDN, the SIM's IMSIs) — the publisher does not
-know which listeners exist. Each enabled interface's outbound listener then owns its
-table's lifecycle: it fetches the stored peers itself, sends its request, and removes
-the rows:
+ICCID. Deactivation changes the DB (`sim.isActive`) and publishes one `SimDeactivated`
+event; the listener of each enabled interface then sends that interface's
+termination message and removes its registration rows:
 
-- **S6a:** CLR with Cancellation-Type `SUBSCRIPTION_WITHDRAWAL` per stored MME, without
-  the re-attach flag (TS 23.401 §5.3.8.4), then `location_lte` is removed.
-- **Cx:** RTR with Reason-Code `PERMANENT_TERMINATION` per stored S-CSCF
-  (TS 29.228 §6.1.3.1), then `imsi_scscf` and `location_ip_sm_gw` (IMS domain, no
-  signalling of its own) are removed.
-- **SWx:** RTR with Reason-Code `PERMANENT_TERMINATION` per stored 3GPP AAA server
-  (TS 29.273 §8.1.2.2.3), then `location_vowifi` is removed.
+- **S6a:** CLR `SUBSCRIPTION_WITHDRAWAL` to the stored MME.
+- **Cx:** RTR `PERMANENT_TERMINATION` to the stored S-CSCF.
+- **SWx:** RTR `PERMANENT_TERMINATION` to the stored 3GPP AAA server.
 
-Interfaces whose capability is not enabled have no listener, so nothing is sent — and
-their rows stay (stale but harmless, 4G access is barred). A listener finding no stored
-row sends nothing, so repeated deactivation is idempotent.
+Interfaces without a listener (capability disabled) or without a stored
+registration send nothing, so repeated deactivation is idempotent.
 
 ## Domain events
 

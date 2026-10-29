@@ -55,8 +55,6 @@ subscriber. Sent from two paths:
 - the **subscription-state path**, when a SIM is deactivated via the
   `SubscriptionStateService` (reason `PERMANENT_TERMINATION`).
 
-A SAR de-registration clears the assignment without sending an RTR.
-
 ## S6a/S6d (TS 29.272)
 
 Peer: MME (S6a) / SGSN (S6d), via DRA.

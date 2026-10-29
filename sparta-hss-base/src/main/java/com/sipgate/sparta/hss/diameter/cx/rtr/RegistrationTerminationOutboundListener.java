@@ -36,15 +36,10 @@ public class RegistrationTerminationOutboundListener extends BaseOutboundListene
         onEvent(event);
     }
 
-    /// For every IMSI of the deactivated SIM, removes the IP-SM-GW row (it belongs to the IMS
-    /// domain, written by the Cx SAR handlers, and needs no signalling of its own) and, if an
-    /// S-CSCF was stored in `imsi_scscf`, sends an RTR with Reason-Code `PERMANENT_TERMINATION`
-    /// (TS 29.228 §6.1.3.1, equivalent to the one in
-    /// [com.sipgate.sparta.hss.diameter.cx.mar.MultimediaAuthHandler] except for the Reason-Code;
-    /// the Private Identity (User-Name) is the IMSI) and clears the assignment. The listener owns
-    /// the `imsi_scscf` and `location_ip_sm_gw` lifecycle; the event carries no per-peer data —
-    /// it is cleared here, not by the deactivating service, so a deployment without the Cx
-    /// capability keeps the stale (harmless, 4G-barred) rows.
+    /// De-registers the IMSIs of the deactivated SIM from their stored S-CSCF, so the IMS
+    /// registration ends with the subscription: RTR with Reason-Code `PERMANENT_TERMINATION`
+    /// (TS 29.228 §6.1.3.1), then the assignment is cleared. The IP-SM-GW row belongs to the
+    /// same IMS registration and is removed without signalling.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {

@@ -5,8 +5,7 @@ import java.util.List;
 /// Published by [SubscriptionStateService#deactivate] when a SIM is deactivated. Carries only the
 /// subscriber's identity — the IMSIs of the SIM and its MSISDN. It deliberately carries no
 /// per-interface details: each outbound listener fetches what it needs from its own table and
-/// owns that table's lifecycle (fetch, send, remove). A publisher must not know which listeners
-/// exist or what they need; that would be a function call, not an event.
+/// owns that table's lifecycle (fetch, send, remove).
 ///
 /// @param msisdn the SIM's MSISDN, without `+` (the Cx Public Identity is built from it)
 /// @param imsis  the IMSIs of the SIM

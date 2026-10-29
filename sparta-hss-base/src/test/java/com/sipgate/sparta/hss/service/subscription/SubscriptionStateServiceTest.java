@@ -45,11 +45,14 @@ class SubscriptionStateServiceTest {
 
     @Test
     void deactivate_sets_sim_inactive_and_publishes_the_identity() {
+        // GIVEN
         final var sim = activeSim();
         when(simDao.getSimByIccid(ICCID)).thenReturn(Optional.of(sim));
 
+        // WHEN
         underTest.deactivate(ICCID);
 
+        // THEN
         assertThat(sim.isActive()).isFalse();
         final var captor = ArgumentCaptor.forClass(SimDeactivated.class);
         verify(eventPublisher).publish(captor.capture());
@@ -61,40 +64,50 @@ class SubscriptionStateServiceTest {
 
     @Test
     void deactivate_fails_when_iccid_unknown_and_publishes_nothing() {
+        // GIVEN
         when(simDao.getSimByIccid(ICCID)).thenReturn(Optional.empty());
 
+        // WHEN / THEN
         assertThatThrownBy(() -> underTest.deactivate(ICCID)).isInstanceOf(NoSuchElementException.class);
         verifyNoInteractions(eventPublisher);
     }
 
     @Test
     void repeated_deactivation_publishes_the_event_again() {
-        // idempotent: the switch stays off, the listeners send only what their tables still hold
+        // GIVEN
         final var sim = activeSim();
         sim.setActive(false);
         when(simDao.getSimByIccid(ICCID)).thenReturn(Optional.of(sim));
 
+        // WHEN
         underTest.deactivate(ICCID);
 
+        // THEN
         assertThat(sim.isActive()).isFalse();
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(SimDeactivated.class));
     }
 
     @Test
     void activate_only_flips_the_switch() {
+        // GIVEN
         final var sim = activeSim();
         sim.setActive(false);
         when(simDao.getSimByIccid(ICCID)).thenReturn(Optional.of(sim));
 
+        // WHEN
         underTest.activate(ICCID);
 
+        // THEN
         assertThat(sim.isActive()).isTrue();
         verifyNoInteractions(eventPublisher);
     }
 
     @Test
     void activate_fails_when_iccid_unknown() {
+        // GIVEN
         when(simDao.getSimByIccid(ICCID)).thenReturn(Optional.empty());
+
+        // WHEN / THEN
         assertThatThrownBy(() -> underTest.activate(ICCID)).isInstanceOf(NoSuchElementException.class);
     }
 
