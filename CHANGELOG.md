@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Cx and SWx handlers for authentication and server assignment check the AccessPolicy interface before allowing access to the IMS core.
+- `SubscriptionStateService` to activate/deactivate a SIM by ICCID. Deactivation flips `sim.isActive` and publishes 
+  one `SimDeactivated` event; each enabled interface's outbound listener then detaches the subscriber: 
+  S6a CLR `SUBSCRIPTION_WITHDRAWAL` to the stored MME, Cx RTR `PERMANENT_TERMINATION` to the stored S-CSCF, 
+  SWx RTR `PERMANENT_TERMINATION` to the stored 3GPP AAA server, then the registration rows are removed. 
+  Fire-and-forget like all outbound requests; repeated deactivation is idempotent.
 
 ### Changed
 
@@ -17,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `EutranAccessPolicy` to `AccessPolicy` (also: moved to another package)
 - Renamed configuration property `sipgate.eutran-access-policy` to `sipgate.access-policy`.
 - Renamed metric `eutran_access_rejected` to `access_rejected` in order to include IMS metrics
+
+### Fixed
+
+- S6a ULR: the MSISDN is resolved before the `AccessPolicy` runs, so an unknown IMSI answers `ERROR_USER_UNKNOWN` instead of
+  the policy's `DIAMETER_UNABLE_TO_COMPLY` (the default `subscription-state` policy cannot decide for an IMSI without a SIM).
 
 ## [2.0.0] - 2026-10-28
 

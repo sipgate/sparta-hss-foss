@@ -48,7 +48,7 @@ Whether the `sim` table's `op` column holds the pre-computed **OPc** or the raw
 
 Environment variable: `SIPGATE_ACCESS_POLICY`.
 
-Which built-in [`AccessPolicy`](../development/extending.md#eutranaccesspolicy) gates 4G and IMS access:
+Which built-in [`AccessPolicy`](../development/extending.md#accesspolicy) gates 4G and IMS access:
 
 - `subscription-state` (shipped `application.yaml`) — the `sim` table's `isActive`
   flag; an unknown IMSI yields no decision (`DIAMETER_UNABLE_TO_COMPLY`)
