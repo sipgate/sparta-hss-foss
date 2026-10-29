@@ -1,10 +1,12 @@
 package com.sipgate.sparta.hss.configuration;
 
 import com.sipgate.sparta.hss.diameter.client.DiameterConfig;
-import com.sipgate.sparta.hss.diameter.common.auth.EapAkaPrimeKeyDerivation;
+import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.auth.Authenticator;
+import com.sipgate.sparta.hss.diameter.common.auth.EapAkaPrimeKeyDerivation;
 import com.sipgate.sparta.hss.diameter.s6a.common.SubscriptionDataEncoder;
 import com.sipgate.sparta.hss.diameter.swx.mar.SwxMultimediaAuthHandler;
+import com.sipgate.sparta.hss.diameter.swx.rtr.SwxRegistrationTerminationOutboundListener;
 import com.sipgate.sparta.hss.diameter.swx.sar.Non3gppUserDataEncoder;
 import com.sipgate.sparta.hss.diameter.swx.sar.Non3gppUserDataFactory;
 import com.sipgate.sparta.hss.diameter.swx.sar.SwxServerAssignmentHandler;
@@ -62,5 +64,17 @@ public class SwxConfiguration {
         final AccessPolicy accessPolicy) {
         return new SwxServerAssignmentHandler(
             simDao, locationVowifiDao, imsiProfileDao, non3gppUserDataFactory, eventPublisher, meterRegistry, accessPolicy);
+    }
+
+    @Bean
+    public SwxRegistrationTerminationOutboundListener swxRegistrationTerminationOutboundListener(
+        final DiameterSessions diameterSessions,
+        final LocationVowifiDao locationVowifiDao) {
+        return new SwxRegistrationTerminationOutboundListener(diameterSessions, locationVowifiDao);
+    }
+
+    @Bean
+    public SwxOutboundEventDispatcher swxOutboundEventDispatcher(final SwxRegistrationTerminationOutboundListener listener) {
+        return new SwxOutboundEventDispatcher(listener);
     }
 }

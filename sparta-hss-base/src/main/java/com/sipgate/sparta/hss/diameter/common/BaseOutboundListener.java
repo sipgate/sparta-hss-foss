@@ -1,12 +1,15 @@
 package com.sipgate.sparta.hss.diameter.common;
 
+import com.sipgate.sparta.diameter.base.core.Answer;
+import com.sipgate.sparta.diameter.base.core.OutgoingRequest;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Objects;
 
-/// Sends the outbound request carried by a [BaseEvent] over the Diameter client and logs the
-/// outcome.
+/// Sends outbound requests over the Diameter client and logs the outcome: the request carried by
+/// a [BaseEvent], or requests a subclass builds itself from a domain event (e.g. on SIM
+/// deactivation).
 ///
 /// Answer handling is fire-and-forget: the DRA routes the request by Destination-Host/Realm, and
 /// the HSS does not act on the answer beyond logging.
@@ -20,20 +23,28 @@ public abstract class BaseOutboundListener {
         this.diameterSessions = diameterSessions;
     }
 
-    protected void onEvent(final BaseEvent event) {
-        final var request = event.getRequest();
+    protected DiameterSessions getDiameterSessions() {
+        return diameterSessions;
+    }
 
+    protected void onEvent(final BaseEvent event) {
+        send(event.getRequest(), event.getContext());
+    }
+
+    /// Sends a request built by the producer ([#onEvent]) or by the listener itself from a domain
+    /// event; `context` is a short description for logging (e.g. `"imsi=..., mme=..."`).
+    protected void send(final OutgoingRequest<? extends Answer> request, final String context) {
         // The Session-Id (RFC 6733 §8.8) is a session-scoped identifier owned by the session layer:
         // the producer builds the command content, the listener stamps the Session-Id before sending.
         Objects.requireNonNull(request.getSessionId());
 
         final var command = commandName(request.getClass());
         diameterSessions.send(request).whenComplete((answer, error) -> {
-            if (error == null) {
-                LOGGER.info("sent outbound {} ({})", command, event.getContext());
-            } else {
-                LOGGER.warn("outbound {} ({}) failed: {}", command, event.getContext(), error.getMessage());
+            if (error != null) {
+                LOGGER.warn("outbound {} ({}) failed: {}", command, context, error.getMessage());
+                return;
             }
+            LOGGER.info("sent outbound {} ({})", command, context);
         });
     }
 

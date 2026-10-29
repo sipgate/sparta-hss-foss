@@ -63,8 +63,11 @@ public class CxConfiguration {
     }
 
     @Bean
-    public RegistrationTerminationOutboundListener registrationTerminationOutboundListener(final DiameterSessions diameterSessions) {
-        return new RegistrationTerminationOutboundListener(diameterSessions);
+    public RegistrationTerminationOutboundListener registrationTerminationOutboundListener(
+        final DiameterSessions diameterSessions,
+        final ImsiScscfDao imsiScscfDao,
+        final LocationIpSmGwDao locationIpSmGwDao) {
+        return new RegistrationTerminationOutboundListener(diameterSessions, imsiScscfDao, locationIpSmGwDao);
     }
 
     @Bean

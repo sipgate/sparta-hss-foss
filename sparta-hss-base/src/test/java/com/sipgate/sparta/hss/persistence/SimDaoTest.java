@@ -61,4 +61,23 @@ class SimDaoTest {
         // THEN
         assertThat(actual).contains(sim);
     }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void itSelectsSimByIccid(final boolean isActive) {
+        // GIVEN
+        final var sim = new Sim();
+        sim.setSecretKey(new byte[]{});
+        sim.setOp(new byte[]{});
+        sim.setIccid("8988173000000123456");
+        sim.setActive(isActive);
+        entityManager.persist(sim);
+
+        // WHEN
+        final var actual = underTest.getSimByIccid("8988173000000123456");
+
+        // THEN
+        assertThat(actual).contains(sim);
+        assertThat(underTest.getSimByIccid("unknown-iccid")).isEmpty();
+    }
 }
