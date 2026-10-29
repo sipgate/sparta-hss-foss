@@ -55,4 +55,22 @@ public class SimDao {
             return Optional.empty();
         }
     }
+
+    /// Loads the SIM by its ICCID. No lock: deactivation is idempotent, and unlike the MAR
+    /// path ([#getSimByImsiStringForUpdate]) nothing here read-modify-writes key material —
+    /// `isActive` is last-writer-wins and Hibernate updates only changed columns.
+    public Optional<Sim> getSimByIccid(final String iccid) {
+        final var simQuery = entityManager.createQuery("select s from Sim s where s.iccid = :iccid", Sim.class);
+        simQuery.setParameter("iccid", iccid);
+        simQuery.setMaxResults(1);
+
+        try {
+            return Optional.of(simQuery.getSingleResult());
+        } catch (final NoResultException e) {
+            return Optional.empty();
+        } catch (final PersistenceException exception) {
+            LOGGER.warn("unable to query sim from db: {}", exception.getMessage());
+            return Optional.empty();
+        }
+    }
 }

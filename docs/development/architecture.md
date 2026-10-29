@@ -57,11 +57,37 @@ not in the list is simply not part of that deployment.
 
 Outbound requests (CLR, ISD, RTR) follow the event path: the handler publishes a
 `BaseEvent` carrying the built request, and a listener on the outbound pool sends it.
+A domain event can also trigger outbound requests: on `SimDeactivated` each
+interface's listener builds its requests from the event data.
+Events are published inside the publishing transaction and dispatched immediately,
+fire-and-forget: a transaction that fails after publishing leaves the peers already
+notified while the database is unchanged — an accepted, self-healing inconsistency.
 
 The HSS does **not** wait for the answer to these requests — the response is logged,
 that's it. Some flows technically expect the HSS to wait (e.g. the ULA should only
 be sent after the ISD answer has been received). sparta-hss deliberately does not
 wait: in most cases waiting only makes the transaction slower with no benefit.
+
+## Subscription state
+
+`SubscriptionStateService` (`com.sipgate.sparta.hss.service.subscription`) activates or deactivates a SIM by
+ICCID. Deactivation flips `sim.isActive` and publishes one `SimDeactivated` event carrying
+only the subscriber's identity (ICCID, MSISDN, the SIM's IMSIs) — the publisher does not
+know which listeners exist. Each enabled interface's outbound listener then owns its
+table's lifecycle: it fetches the stored peers itself, sends its request, and removes
+the rows:
+
+- **S6a:** CLR with Cancellation-Type `SUBSCRIPTION_WITHDRAWAL` per stored MME, without
+  the re-attach flag (TS 23.401 §5.3.8.4), then `location_lte` is removed.
+- **Cx:** RTR with Reason-Code `PERMANENT_TERMINATION` per stored S-CSCF
+  (TS 29.228 §6.1.3.1), then `imsi_scscf` and `location_ip_sm_gw` (IMS domain, no
+  signalling of its own) are removed.
+- **SWx:** RTR with Reason-Code `PERMANENT_TERMINATION` per stored 3GPP AAA server
+  (TS 29.273 §8.1.2.2.3), then `location_vowifi` is removed.
+
+Interfaces whose capability is not enabled have no listener, so nothing is sent — and
+their rows stay (stale but harmless, 4G access is barred). A listener finding no stored
+row sends nothing, so repeated deactivation is idempotent.
 
 ## Domain events
 
@@ -71,6 +97,7 @@ Beyond the outbound-request events, the core publishes domain events:
 - `UeVisited` — a UE visited a TAC with a given effective profile
 - `ScscfAssignmentChanged` — the S-CSCF assignment changed (Cx)
 - `AaaServerAssignmentChanged` — the 3GPP AAA server assignment changed (SWx)
+- `SimDeactivated` — a SIM was deactivated; carries only its identities (ICCID, MSISDN, IMSIs)
 
 In the Spring Boot deployment these are plain Spring application events
 (`@EventListener`); an embedder supplies its own

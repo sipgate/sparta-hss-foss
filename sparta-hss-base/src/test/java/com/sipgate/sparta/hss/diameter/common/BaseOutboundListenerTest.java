@@ -29,7 +29,7 @@ class BaseOutboundListenerTest {
     @Test
     void itSendsTheRequest() {
         // GIVEN
-        final var listener = new RegistrationTerminationOutboundListener(diameterSessions);
+        final var listener = new RegistrationTerminationOutboundListener(diameterSessions, null, null);
         final var request = new RegistrationTerminationRequest.Out();
         request.setSessionId(SESSION_ID);
 

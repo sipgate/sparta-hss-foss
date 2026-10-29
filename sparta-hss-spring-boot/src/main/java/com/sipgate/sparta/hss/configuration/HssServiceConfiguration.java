@@ -14,15 +14,16 @@ import com.sipgate.sparta.hss.persistence.MsisdnScscfDao;
 import com.sipgate.sparta.hss.persistence.SimDao;
 import com.sipgate.sparta.hss.service.accessPolicy.AllowAllAccessPolicy;
 import com.sipgate.sparta.hss.service.roaming.BlockRoamingService;
+import com.sipgate.sparta.hss.service.subscription.SubscriptionStateService;
 import com.sipgate.sparta.hss.service.volte.location.LocationService;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.concurrent.TimeUnit;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /// Provides the base module's services and its extension points as beans.
@@ -92,6 +93,18 @@ public class HssServiceConfiguration {
     @Bean
     public LocationService locationService(final MsisdnScscfDao msisdnScscfDao, final LocationLteDao locationLteDao) {
         return new LocationService(msisdnScscfDao, locationLteDao);
+    }
+
+    /// Activates/deactivates a SIM by ICCID; deactivation also ends the subscriber's live
+    /// registrations (outbound CLR/RTR via the `SimDeactivated` event, fire-and-forget like all
+    /// outbound requests). Registered unconditionally — the sends happen only for interfaces whose
+    /// outbound listeners are enabled via `sipgate.diameter.capabilities`.
+    @Bean
+    public SubscriptionStateService subscriptionStateService(
+        final SimDao simDao,
+        final EventPublisher eventPublisher)
+    {
+        return new SubscriptionStateService(simDao, eventPublisher);
     }
 
     public static class BlockedEventExpiry {

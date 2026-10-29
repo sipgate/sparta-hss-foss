@@ -4,6 +4,7 @@ import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationEvent;
 import com.sipgate.sparta.hss.diameter.s6a.clr.CancelLocationOutboundListener;
 import com.sipgate.sparta.hss.diameter.s6a.isd.InsertSubscriberDataEvent;
 import com.sipgate.sparta.hss.diameter.s6a.isd.InsertSubscriberDataOutboundListener;
+import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 
@@ -26,6 +27,12 @@ public class S6aOutboundEventDispatcher {
     @EventListener
     public void onCancelLocation(final CancelLocationEvent event) {
         cancelLocationOutboundListener.receiveRequest(event);
+    }
+
+    @Async("outboundThreadPoolExecutor")
+    @EventListener
+    public void onSimDeactivated(final SimDeactivated event) {
+        cancelLocationOutboundListener.receiveSimDeactivated(event);
     }
 
     @Async("outboundThreadPoolExecutor")

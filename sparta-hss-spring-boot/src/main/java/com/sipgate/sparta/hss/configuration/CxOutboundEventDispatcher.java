@@ -2,6 +2,7 @@ package com.sipgate.sparta.hss.configuration;
 
 import com.sipgate.sparta.hss.diameter.cx.rtr.RegistrationTerminationEvent;
 import com.sipgate.sparta.hss.diameter.cx.rtr.RegistrationTerminationOutboundListener;
+import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 
@@ -20,5 +21,11 @@ public class CxOutboundEventDispatcher {
     @EventListener
     public void onRegistrationTermination(final RegistrationTerminationEvent event) {
         registrationTerminationOutboundListener.receiveRequest(event);
+    }
+
+    @Async("outboundThreadPoolExecutor")
+    @EventListener
+    public void onSimDeactivated(final SimDeactivated event) {
+        registrationTerminationOutboundListener.receiveSimDeactivated(event);
     }
 }

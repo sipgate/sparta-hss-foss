@@ -48,9 +48,14 @@ IMS authentication (AKAv1-MD5):
 ### RTR — Registration Termination Request **(out)**
 
 Fire-and-forget de-registration notice to the S-CSCF previously assigned to a
-subscriber. It is sent from the **MAR path only** — when a MAR arrives from a
-different S-CSCF than the stored one (reason `NEW_SERVER_ASSIGNED`). A SAR
-de-registration clears the assignment without sending an RTR.
+subscriber. Sent from two paths:
+
+- the **MAR path**, when a MAR arrives from a different S-CSCF than the stored one
+  (reason `NEW_SERVER_ASSIGNED`);
+- the **subscription-state path**, when a SIM is deactivated via the
+  `SubscriptionStateService` (reason `PERMANENT_TERMINATION`).
+
+A SAR de-registration clears the assignment without sending an RTR.
 
 ## S6a/S6d (TS 29.272)
 
@@ -158,6 +163,15 @@ The requesting AAA server is identified by the request's `Origin-Host`
 
 Unlike the MAR, a SAR carries no `AAA-Failure-Indication`, so a conflict has no
 override path.
+
+### RTR — Registration Termination Request **(out)**
+
+Fire-and-forget de-registration notice to the AAA server previously assigned to a
+subscriber, sent when a SIM is deactivated via the `SubscriptionStateService`
+(reason `PERMANENT_TERMINATION`, TS 29.273 §8.1.2.2.3). The outbound listener fetches
+the stored assignment itself from the identity-only `SimDeactivated` event and clears
+it after sending; no `AaaServerAssignmentChanged` is published. A SAR de-registration
+clears the assignment without sending an RTR.
 
 ### MAR — Multimedia-Auth-Request
 
