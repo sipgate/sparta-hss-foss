@@ -18,8 +18,12 @@ import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RegistrationTerminationOutboundListener extends BaseOutboundListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationTerminationOutboundListener.class);
 
     private final ImsiScscfDao imsiScscfDao;
     private final LocationIpSmGwDao locationIpSmGwDao;
@@ -36,7 +40,11 @@ public class RegistrationTerminationOutboundListener extends BaseOutboundListene
     }
 
     public void receiveRequest(final RegistrationTerminationEvent event) {
-        onEvent(event);
+        try {
+            onEvent(event);
+        } catch (final Exception e) {
+            LOGGER.error("failed to send outbound registration termination ({})", event.getContext(), e);
+        }
     }
 
     /// De-registers the IMSIs of the deactivated SIM from their stored S-CSCF, if the configured
@@ -44,36 +52,45 @@ public class RegistrationTerminationOutboundListener extends BaseOutboundListene
     /// any active subscription: RTR with Reason-Code `PERMANENT_TERMINATION` (TS 29.228 §6.1.3.1),
     /// then the assignment is cleared. The IP-SM-GW row belongs to the same IMS registration and
     /// is removed without signalling.
+    ///
+    /// Runs synchronously in the publisher's transaction; a failing teardown is therefore caught
+    /// here — inside the transactional boundary — so it can neither mark the publisher's
+    /// transaction rollback-only (the SIM deactivation must commit regardless) nor stop the
+    /// remaining IMSIs of the same SIM. The teardown is best-effort by design.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
-            if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
-                continue;
+            try {
+                if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
+                    continue;
+                }
+
+                locationIpSmGwDao.clearIpSmGw(imsi);
+
+                final var scscf = imsiScscfDao.getScscf(imsi);
+                if (scscf.isEmpty()) {
+                    continue;
+                }
+
+                final var assignment = scscf.get();
+                final var rtr = getDiameterSessions().createRequest(
+                    RegistrationTerminationRequest.Out.class,
+                    AUTH_SESSION_STATE_NOT_MAINTAINED,
+                    assignment.getDiameterHost(),
+                    assignment.getDiameterRealm(),
+                    VENDOR_ID_3GPP,
+                    APP_ID_CX_DX);
+                rtr.setUserName(imsi);
+                rtr.setDeregistrationReason(List.of(
+                    AVP.create(new AVPKey(AVP_REASON_CODE, VENDOR_ID_3GPP), REASON_CODE_PERMANENT_TERMINATION),
+                    AVP.create(new AVPKey(AVP_REASON_INFO, VENDOR_ID_3GPP), "subscription terminated")));
+                rtr.addPublicIdentity("tel:+" + event.msisdn());
+
+                send(rtr, "imsi=" + imsi + ", scscf=" + assignment.getDiameterHost() + ", simDeactivation");
+                imsiScscfDao.clearScscf(imsi);
+            } catch (final Exception e) {
+                LOGGER.error("failed to end the S-CSCF registration of imsi {} on sim deactivation", imsi, e);
             }
-
-            locationIpSmGwDao.clearIpSmGw(imsi);
-
-            final var scscf = imsiScscfDao.getScscf(imsi);
-            if (scscf.isEmpty()) {
-                continue;
-            }
-
-            final var assignment = scscf.get();
-            final var rtr = getDiameterSessions().createRequest(
-                RegistrationTerminationRequest.Out.class,
-                AUTH_SESSION_STATE_NOT_MAINTAINED,
-                assignment.getDiameterHost(),
-                assignment.getDiameterRealm(),
-                VENDOR_ID_3GPP,
-                APP_ID_CX_DX);
-            rtr.setUserName(imsi);
-            rtr.setDeregistrationReason(List.of(
-                AVP.create(new AVPKey(AVP_REASON_CODE, VENDOR_ID_3GPP), REASON_CODE_PERMANENT_TERMINATION),
-                AVP.create(new AVPKey(AVP_REASON_INFO, VENDOR_ID_3GPP), "subscription terminated")));
-            rtr.addPublicIdentity("tel:+" + event.msisdn());
-
-            send(rtr, "imsi=" + imsi + ", scscf=" + assignment.getDiameterHost() + ", simDeactivation");
-            imsiScscfDao.clearScscf(imsi);
         }
     }
 }

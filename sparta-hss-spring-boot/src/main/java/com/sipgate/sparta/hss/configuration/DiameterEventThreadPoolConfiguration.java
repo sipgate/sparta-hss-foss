@@ -7,16 +7,18 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-/// Thread pools for Diameter request processing.
+/// Thread pool for Diameter inbound request processing.
 ///
-/// - `inboundThreadPoolExecutor` runs the inbound request handlers off the Netty event loop, which
-///   also drives the DWR/DWA watchdog and every other request on a peer connection. Blocking work
-///   (DB, event listeners, external authorization calls) must not run on the event loop.
-/// - `outboundThreadPoolExecutor` runs the HSS-initiated outbound requests (RTR, CLR, ISD) via the
-///   `@Async`-annotated outbound listeners, so the send never blocks the thread that published the event.
+/// `inboundThreadPoolExecutor` runs the inbound request handlers off the Netty event loop, which
+/// also drives the DWR/DWA watchdog and every other request on a peer connection. Blocking work
+/// (DB, event listeners, external authorization calls) must not run on the event loop.
 ///
-/// Both pools use the default `AbortPolicy`: when the bounded queue is full the task is rejected
-/// rather than queued unboundedly, which the dispatch guard turns into an UNABLE_TO_COMPLY answer.
+/// The outbound request listeners (RTR, CLR, ISD) deliberately have NO pool of their own: the
+/// `Cx`/`S6a`/`SwxOutboundEventDispatcher`s dispatch synchronously on the publishing thread and
+/// inside the publisher's transaction, so the teardown observes the publisher's uncommitted state
+/// (e.g. `isActive=false` from `SubscriptionStateService.deactivate`), keeps kafka message order,
+/// and cannot lose events to a bounded pool's `AbortPolicy`. The listeners guard themselves with
+/// try/catch, so a failed teardown neither rolls back the publisher nor fails its request.
 @AutoConfiguration
 @EnableAsync
 @EnableScheduling
@@ -24,20 +26,11 @@ public class DiameterEventThreadPoolConfiguration {
 
     @Bean(name = "inboundThreadPoolExecutor")
     public Executor inboundThreadPoolExecutor() {
-        return makePool("diameter-inbound-");
-    }
-
-    @Bean(name = "outboundThreadPoolExecutor")
-    public Executor outboundThreadPoolExecutor() {
-        return makePool("diameter-outbound-");
-    }
-
-    private static Executor makePool(final String threadNamePrefix) {
         final var executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(10);
         executor.setMaxPoolSize(40);
         executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix(threadNamePrefix);
+        executor.setThreadNamePrefix("diameter-inbound-");
         return executor;
     }
 }

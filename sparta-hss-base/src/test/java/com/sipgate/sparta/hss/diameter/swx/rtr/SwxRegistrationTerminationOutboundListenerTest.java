@@ -1,6 +1,7 @@
 package com.sipgate.sparta.hss.diameter.swx.rtr;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -155,6 +156,28 @@ class SwxRegistrationTerminationOutboundListenerTest {
         assertThat(captor.getAllValues()).extracting(RegistrationTerminationRequest.Out::getUserName)
             .containsExactlyInAnyOrder(IMSI, SECOND_IMSI);
         verify(locationVowifiDao).clearAaaServer(IMSI);
+        verify(locationVowifiDao).clearAaaServer(SECOND_IMSI);
+    }
+
+    @Test
+    void itSwallowsAFailingTeardownAndStillTerminatesTheRemainingImsis() {
+        // GIVEN — the first IMSI's AAA lookup fails (db error); the second IMSI is healthy.
+        // The teardown runs synchronously in the publisher's transaction, so a propagating
+        // exception would mark that transaction rollback-only and lose the sim deactivation —
+        // it must be caught inside the listener instead.
+        doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
+        when(accessPolicy.isImsAccessAllowed(SECOND_IMSI)).thenReturn(Optional.of(false));
+        when(locationVowifiDao.getAaaServer(IMSI)).thenThrow(new IllegalStateException("db down"));
+        when(locationVowifiDao.getAaaServer(SECOND_IMSI)).thenReturn(Optional.of(aaaServerFor(SECOND_IMSI)));
+
+        // WHEN + THEN — nothing propagates and the healthy IMSI is still de-registered
+        assertThatCode(() ->
+            underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI, SECOND_IMSI))))
+            .doesNotThrowAnyException();
+        final var captor = ArgumentCaptor.forClass(RegistrationTerminationRequest.Out.class);
+        verify(diameterSessions, times(1)).send(captor.capture());
+        assertThat(captor.getValue().getUserName()).isEqualTo(SECOND_IMSI);
         verify(locationVowifiDao).clearAaaServer(SECOND_IMSI);
     }
 

@@ -1,8 +1,13 @@
 package com.sipgate.sparta.hss.diameter.s6a.clr;
 
+import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_3GPP;
+import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.APP_ID_S6A_S6D;
+import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AUTH_SESSION_STATE_NOT_MAINTAINED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -171,5 +176,42 @@ class CancelLocationOutboundListenerTest {
         assertThat(captor.getAllValues()).extracting(CancelLocationRequest.Out::getUserName)
             .containsExactlyInAnyOrder(IMSI, SECOND_IMSI);
         verify(locationLteDao, times(2)).removeExistingMmeLocation(any());
+    }
+
+    @Test
+    void itSwallowsAFailingTeardownAndStillDetachesTheRemainingImsis() {
+        // GIVEN — reading the first IMSI's location fails (db error); the second IMSI is healthy.
+        // The teardown runs synchronously in the publisher's transaction, so a propagating
+        // exception would mark that transaction rollback-only and lose the sim deactivation —
+        // it must be caught inside the listener instead.
+        doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        when(locationLteDao.getLocation(IMSI)).thenThrow(new IllegalStateException("db down"));
+        when(locationLteDao.getLocation(SECOND_IMSI)).thenReturn(Optional.of(
+            new LocationLTE().setMmeHostname("mme2.example.org").setMmeRealm("epc.example.org").setVisitedPlmnId(VISITED_PLMN)));
+        when(accessPolicy.isEutranAccessAllowed(SECOND_IMSI, VISITED_MCC)).thenReturn(Optional.of(false));
+
+        // WHEN + THEN — nothing propagates and the healthy IMSI is still detached
+        assertThatCode(() ->
+            underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI, SECOND_IMSI))))
+            .doesNotThrowAnyException();
+        final var captor = ArgumentCaptor.forClass(CancelLocationRequest.Out.class);
+        verify(diameterSessions, times(1)).send(captor.capture());
+        assertThat(captor.getValue().getUserName()).isEqualTo(SECOND_IMSI);
+        verify(locationLteDao, times(1)).removeExistingMmeLocation(any());
+    }
+
+    @Test
+    void itSwallowsAFailingSendOfACancelLocationEvent() {
+        // GIVEN — the roaming-block CLR cannot be sent; the triggering inbound request (ULR)
+        // must not fail because of it
+        final var clr = diameterSessions.createRequest(
+            CancelLocationRequest.Out.class, AUTH_SESSION_STATE_NOT_MAINTAINED,
+            "mme.example.org", "epc.example.org", VENDOR_ID_3GPP, APP_ID_S6A_S6D);
+        doThrow(new IllegalStateException("send failed")).when(diameterSessions).send(any());
+
+        // WHEN + THEN
+        assertThatCode(() -> underTest.receiveRequest(new CancelLocationEvent(clr, "roamingBlock")))
+            .doesNotThrowAnyException();
+        verify(diameterSessions, times(1)).send(any());
     }
 }
