@@ -17,9 +17,13 @@ import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /// Sends the SWx RTR on SIM deactivation.
 public class SwxRegistrationTerminationOutboundListener extends BaseOutboundListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwxRegistrationTerminationOutboundListener.class);
 
     private final LocationVowifiDao locationVowifiDao;
     private final AccessPolicy accessPolicy;
@@ -39,30 +43,34 @@ public class SwxRegistrationTerminationOutboundListener extends BaseOutboundList
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
-            if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
-                continue;
+            try {
+                if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
+                    continue;
+                }
+
+                final var aaaServer = locationVowifiDao.getAaaServer(imsi);
+                if (aaaServer.isEmpty()) {
+                    continue;
+                }
+
+                final var assignment = aaaServer.get();
+                final var rtr = getDiameterSessions().createRequest(
+                    RegistrationTerminationRequest.Out.class,
+                    AUTH_SESSION_STATE_NOT_MAINTAINED,
+                    assignment.getDiameterHost(),
+                    assignment.getDiameterRealm(),
+                    VENDOR_ID_3GPP,
+                    APP_ID_SWX);
+                rtr.setUserName(imsi);
+                rtr.setDeregistrationReason(List.of(
+                    AVP.create(new AVPKey(AVP_REASON_CODE, VENDOR_ID_3GPP), REASON_CODE_PERMANENT_TERMINATION),
+                    AVP.create(new AVPKey(AVP_REASON_INFO, VENDOR_ID_3GPP), "subscription terminated")));
+
+                send(rtr, "imsi=" + imsi + ", aaaServer=" + assignment.getDiameterHost() + ", simDeactivation");
+                locationVowifiDao.clearAaaServer(imsi);
+            } catch (final Exception e) {
+                LOGGER.error("failed to end the SWx registration of imsi {} on sim deactivation", imsi, e);
             }
-
-            final var aaaServer = locationVowifiDao.getAaaServer(imsi);
-            if (aaaServer.isEmpty()) {
-                continue;
-            }
-
-            final var assignment = aaaServer.get();
-            final var rtr = getDiameterSessions().createRequest(
-                RegistrationTerminationRequest.Out.class,
-                AUTH_SESSION_STATE_NOT_MAINTAINED,
-                assignment.getDiameterHost(),
-                assignment.getDiameterRealm(),
-                VENDOR_ID_3GPP,
-                APP_ID_SWX);
-            rtr.setUserName(imsi);
-            rtr.setDeregistrationReason(List.of(
-                AVP.create(new AVPKey(AVP_REASON_CODE, VENDOR_ID_3GPP), REASON_CODE_PERMANENT_TERMINATION),
-                AVP.create(new AVPKey(AVP_REASON_INFO, VENDOR_ID_3GPP), "subscription terminated")));
-
-            send(rtr, "imsi=" + imsi + ", aaaServer=" + assignment.getDiameterHost() + ", simDeactivation");
-            locationVowifiDao.clearAaaServer(imsi);
         }
     }
 }

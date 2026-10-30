@@ -13,8 +13,12 @@ import com.sipgate.sparta.hss.persistence.LocationLteDao;
 import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CancelLocationOutboundListener extends BaseOutboundListener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CancelLocationOutboundListener.class);
 
     private final LocationLteDao locationLteDao;
     private final AccessPolicy accessPolicy;
@@ -28,7 +32,11 @@ public class CancelLocationOutboundListener extends BaseOutboundListener {
     }
 
     public void receiveRequest(final CancelLocationEvent event) {
-        onEvent(event);
+        try {
+            onEvent(event);
+        } catch (final Exception e) {
+            LOGGER.error("failed to send outbound cancel location ({})", event.getContext(), e);
+        }
     }
 
     /// Checks if the configured `accessPolicy` currently allows the given IMSIs in their visiting
@@ -39,31 +47,35 @@ public class CancelLocationOutboundListener extends BaseOutboundListener {
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
-            final var maybeLocation = locationLteDao.getLocation(imsi);
-            if (maybeLocation.isEmpty()) {
-                continue;
+            try {
+                final var maybeLocation = locationLteDao.getLocation(imsi);
+                if (maybeLocation.isEmpty()) {
+                    continue;
+                }
+                final var location = maybeLocation.get();
+
+                final var mcc = MncMccFormatter.plmnToMcc(location.getVisitedPlmnId());
+                if (accessPolicy.isEutranAccessAllowed(imsi, mcc).orElse(false)) {
+                    continue;
+                }
+
+                final var clr = getDiameterSessions().createRequest(
+                    CancelLocationRequest.Out.class,
+                    AUTH_SESSION_STATE_NOT_MAINTAINED,
+                    location.getMmeHostname(),
+                    location.getMmeRealm(),
+                    VENDOR_ID_3GPP,
+                    APP_ID_S6A_S6D);
+                clr.setUserName(imsi);
+                // CLR-Flags bit 0 = S6a/S6d-Indicator (TS 29.272 §7.3.152): the old serving node is an MME.
+                clr.setClrFlags(1L);
+                clr.setCancellationType(CANCELLATION_TYPE_SUBSCRIPTION_WITHDRAWAL);
+
+                send(clr, "imsi=" + imsi + ", mme=" + location.getMmeHostname() + ", simDeactivation");
+                locationLteDao.removeExistingMmeLocation(location);
+            } catch (final Exception e) {
+                LOGGER.error("failed to detach imsi {} from its MME on sim deactivation", imsi, e);
             }
-            final var location = maybeLocation.get();
-
-            final var mcc = MncMccFormatter.plmnToMcc(location.getVisitedPlmnId());
-            if (accessPolicy.isEutranAccessAllowed(imsi, mcc).orElse(false)) {
-                continue;
-            }
-
-            final var clr = getDiameterSessions().createRequest(
-                CancelLocationRequest.Out.class,
-                AUTH_SESSION_STATE_NOT_MAINTAINED,
-                location.getMmeHostname(),
-                location.getMmeRealm(),
-                VENDOR_ID_3GPP,
-                APP_ID_S6A_S6D);
-            clr.setUserName(imsi);
-            // CLR-Flags bit 0 = S6a/S6d-Indicator (TS 29.272 §7.3.152): the old serving node is an MME.
-            clr.setClrFlags(1L);
-            clr.setCancellationType(CANCELLATION_TYPE_SUBSCRIPTION_WITHDRAWAL);
-
-            send(clr, "imsi=" + imsi + ", mme=" + location.getMmeHostname() + ", simDeactivation");
-            locationLteDao.removeExistingMmeLocation(location);
         }
     }
 }

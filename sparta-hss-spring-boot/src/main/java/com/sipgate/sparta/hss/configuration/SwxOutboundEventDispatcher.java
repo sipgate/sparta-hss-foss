@@ -2,13 +2,13 @@ package com.sipgate.sparta.hss.configuration;
 
 import com.sipgate.sparta.hss.diameter.swx.rtr.SwxRegistrationTerminationOutboundListener;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 
-/// Dispatches the events that trigger outbound SWx requests (RTR) to their listener on the
-/// `outboundThreadPoolExecutor`, so a slow or stalled send never blocks the thread that
-/// published the event.
 public class SwxOutboundEventDispatcher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwxOutboundEventDispatcher.class);
 
     private final SwxRegistrationTerminationOutboundListener swxRegistrationTerminationOutboundListener;
 
@@ -17,9 +17,12 @@ public class SwxOutboundEventDispatcher {
         this.swxRegistrationTerminationOutboundListener = swxRegistrationTerminationOutboundListener;
     }
 
-    @Async("outboundThreadPoolExecutor")
     @EventListener
     public void onSimDeactivated(final SimDeactivated event) {
-        swxRegistrationTerminationOutboundListener.receiveSimDeactivated(event);
+        try {
+            swxRegistrationTerminationOutboundListener.receiveSimDeactivated(event);
+        } catch (final Exception e) {
+            LOGGER.error("could not handle SimDeactivated event", e);
+        }
     }
 }
