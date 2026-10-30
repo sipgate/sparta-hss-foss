@@ -102,8 +102,9 @@ public class S6aConfiguration {
     @Bean
     public CancelLocationOutboundListener cancelLocationOutboundListener(
         final DiameterSessions diameterSessions,
-        final LocationLteDao locationLteDao) {
-        return new CancelLocationOutboundListener(diameterSessions, locationLteDao);
+        final LocationLteDao locationLteDao,
+        final AccessPolicy accessPolicy) {
+        return new CancelLocationOutboundListener(diameterSessions, locationLteDao, accessPolicy);
     }
 
     @Bean

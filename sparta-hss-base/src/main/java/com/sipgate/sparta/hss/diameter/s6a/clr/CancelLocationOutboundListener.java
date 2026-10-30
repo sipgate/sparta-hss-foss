@@ -8,43 +8,53 @@ import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AUTH_SESSI
 import com.sipgate.sparta.diameter._3gpp.s6a.messages.CancelLocationRequest;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.BaseOutboundListener;
+import com.sipgate.sparta.hss.diameter.common.auth.MncMccFormatter;
 import com.sipgate.sparta.hss.persistence.LocationLteDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
 
 public class CancelLocationOutboundListener extends BaseOutboundListener {
 
     private final LocationLteDao locationLteDao;
+    private final AccessPolicy accessPolicy;
 
     public CancelLocationOutboundListener(
         final DiameterSessions diameterSessions,
-        final LocationLteDao locationLteDao) {
+        final LocationLteDao locationLteDao, final AccessPolicy accessPolicy) {
         super(diameterSessions);
         this.locationLteDao = locationLteDao;
+        this.accessPolicy = accessPolicy;
     }
 
     public void receiveRequest(final CancelLocationEvent event) {
         onEvent(event);
     }
 
-    /// Detaches the IMSIs of the deactivated SIM from their stored MME, because a barred SIM
+    /// Checks if the configured `accessPolicy` currently allows the given IMSIs in their visiting
+    /// MCC and then detaches the IMSIs of the deactivated SIM from their stored MME. A barred SIM
     /// must be cut off immediately, not at the next attach: CLR with Cancellation-Type
     /// `SUBSCRIPTION_WITHDRAWAL` without the re-attach flag (TS 23.401 §5.3.8.4), then the row
     /// is removed.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
-            final var location = locationLteDao.getLocation(imsi);
-            if (location.isEmpty()) {
+            final var maybeLocation = locationLteDao.getLocation(imsi);
+            if (maybeLocation.isEmpty()) {
+                continue;
+            }
+            final var location = maybeLocation.get();
+
+            final var mcc = MncMccFormatter.plmnToMcc(location.getVisitedPlmnId());
+            if (accessPolicy.isEutranAccessAllowed(imsi, mcc).orElse(false)) {
                 continue;
             }
 
-            final var mme = location.get();
             final var clr = getDiameterSessions().createRequest(
                 CancelLocationRequest.Out.class,
                 AUTH_SESSION_STATE_NOT_MAINTAINED,
-                mme.getMmeHostname(),
-                mme.getMmeRealm(),
+                location.getMmeHostname(),
+                location.getMmeRealm(),
                 VENDOR_ID_3GPP,
                 APP_ID_S6A_S6D);
             clr.setUserName(imsi);
@@ -52,8 +62,8 @@ public class CancelLocationOutboundListener extends BaseOutboundListener {
             clr.setClrFlags(1L);
             clr.setCancellationType(CANCELLATION_TYPE_SUBSCRIPTION_WITHDRAWAL);
 
-            send(clr, "imsi=" + imsi + ", mme=" + mme.getMmeHostname() + ", simDeactivation");
-            locationLteDao.removeExistingMmeLocation(mme);
+            send(clr, "imsi=" + imsi + ", mme=" + location.getMmeHostname() + ", simDeactivation");
+            locationLteDao.removeExistingMmeLocation(location);
         }
     }
 }

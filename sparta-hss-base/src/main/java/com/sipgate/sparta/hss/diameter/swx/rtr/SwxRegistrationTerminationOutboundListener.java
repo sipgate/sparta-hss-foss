@@ -13,6 +13,7 @@ import com.sipgate.sparta.diameter.base.core.avp.AVPKey;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.BaseOutboundListener;
 import com.sipgate.sparta.hss.persistence.LocationVowifiDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -21,20 +22,27 @@ import java.util.List;
 public class SwxRegistrationTerminationOutboundListener extends BaseOutboundListener {
 
     private final LocationVowifiDao locationVowifiDao;
+    private final AccessPolicy accessPolicy;
 
     public SwxRegistrationTerminationOutboundListener(
         final DiameterSessions diameterSessions,
-        final LocationVowifiDao locationVowifiDao) {
+        final LocationVowifiDao locationVowifiDao, final AccessPolicy accessPolicy) {
         super(diameterSessions);
         this.locationVowifiDao = locationVowifiDao;
+        this.accessPolicy = accessPolicy;
     }
 
-    /// Ends the SWx registration of the deactivated SIM's IMSIs, so the VoWiFi attach does not
-    /// outlive the subscription: RTR with Reason-Code `PERMANENT_TERMINATION`
-    /// (TS 29.273 §8.1.2.2.3), then the assignment is cleared.
+    /// Ends the SWx registration of the deactivated SIM's IMSIs if the configured `accessPolicy`
+    /// denies IMS access for the SIM's IMSIs.
+    /// Send an RTR with Reason-Code `PERMANENT_TERMINATION` (TS 29.273 §8.1.2.2.3) to the AAA,
+    /// then the assignment is cleared in the HSS data store.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
+            if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
+                continue;
+            }
+
             final var aaaServer = locationVowifiDao.getAaaServer(imsi);
             if (aaaServer.isEmpty()) {
                 continue;

@@ -72,8 +72,8 @@ wait: in most cases waiting only makes the transaction slower with no benefit.
 
 `SubscriptionStateService` (`com.sipgate.sparta.hss.service.subscription`) activates or deactivates a SIM by
 ICCID. Deactivation changes the DB (`sim.isActive`) and publishes one `SimDeactivated`
-event; the listener of each enabled interface then sends that interface's
-termination message and removes its registration rows:
+event; the listener of each enabled interface then checks the currently-configured `accessPolicy` and sends
+that interface's termination message and removes its registration rows:
 
 - **S6a:** CLR `SUBSCRIPTION_WITHDRAWAL` to the stored MME.
 - **Cx:** RTR `PERMANENT_TERMINATION` to the stored S-CSCF.

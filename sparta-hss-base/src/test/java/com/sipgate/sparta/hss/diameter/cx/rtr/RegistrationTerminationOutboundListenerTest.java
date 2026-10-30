@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,6 +18,7 @@ import com.sipgate.sparta.hss.diameter.common.Factory;
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
 import com.sipgate.sparta.hss.persistence.entities.ImsiScscf;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class RegistrationTerminationOutboundListenerTest {
 
     private static final String IMSI = "262021234567890";
+    private static final String SECOND_IMSI = "262029876543210";
     private static final String MSISDN = "4912345678901";
 
     private DiameterSessions diameterSessions;
@@ -43,16 +46,20 @@ class RegistrationTerminationOutboundListenerTest {
     @Mock
     private LocationIpSmGwDao locationIpSmGwDao;
 
+    @Mock
+    private AccessPolicy accessPolicy;
+
     @BeforeEach
     void setUp() {
         diameterSessions = spy(new DiameterSessions(Factory.nodeConfig("origin-host", "origin-realm")));
-        underTest = new RegistrationTerminationOutboundListener(diameterSessions, imsiScscfDao, locationIpSmGwDao);
+        underTest = new RegistrationTerminationOutboundListener(diameterSessions, imsiScscfDao, locationIpSmGwDao, accessPolicy);
     }
 
     @Test
     void itSendsAnRtrWithPermanentTerminationAndClearsBothRows() {
-        // GIVEN
-    doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        // GIVEN — the access policy denies IMS access for the deactivated SIM's IMSI
+        doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
         final var scscf = new ImsiScscf();
         scscf.setDiameterHost("scscf.example.org");
         scscf.setDiameterRealm("ims.mnc002.mcc262.3gppnetwork.org");
@@ -82,6 +89,7 @@ class RegistrationTerminationOutboundListenerTest {
 
     @Test
     void itStillClearsIpSmGwWithoutAStoredScscf() {
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
         when(imsiScscfDao.getScscf(IMSI)).thenReturn(Optional.empty());
 
         underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI)));
@@ -97,5 +105,82 @@ class RegistrationTerminationOutboundListenerTest {
 
         verify(diameterSessions, never()).send(any());
         verify(locationIpSmGwDao, never()).clearIpSmGw(any());
+    }
+
+    @Test
+    void itSendsNothingAndKeepsBothRowsWhenTheAccessPolicyAllowsTheImsi() {
+        // GIVEN
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(true));
+
+        // WHEN
+        underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI)));
+
+        // THEN — no RTR and no clearing, the registration stays as it is
+        verify(diameterSessions, never()).send(any());
+        verify(locationIpSmGwDao, never()).clearIpSmGw(IMSI);
+        verify(imsiScscfDao, never()).clearScscf(IMSI);
+    }
+
+    @Test
+    void itTerminatesTheImsiWhenTheAccessPolicyCannotDecide() {
+        // GIVEN
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.empty());
+        when(imsiScscfDao.getScscf(IMSI)).thenReturn(Optional.empty());
+
+        underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI)));
+
+        verify(diameterSessions, never()).send(any());
+        verify(locationIpSmGwDao).clearIpSmGw(IMSI);
+    }
+
+    @Test
+    void itTerminatesOnlyTheSingleImsiTheAccessPolicyDenies() {
+        // GIVEN
+        doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(true));
+        when(accessPolicy.isImsAccessAllowed(SECOND_IMSI)).thenReturn(Optional.of(false));
+        when(imsiScscfDao.getScscf(SECOND_IMSI)).thenReturn(Optional.of(scscfFor(SECOND_IMSI)));
+
+        // WHEN
+        underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI, SECOND_IMSI)));
+
+        // THEN
+        final var captor = ArgumentCaptor.forClass(RegistrationTerminationRequest.Out.class);
+        verify(diameterSessions, times(1)).send(captor.capture());
+        assertThat(captor.getValue().getUserName()).isEqualTo(SECOND_IMSI);
+        verify(locationIpSmGwDao, never()).clearIpSmGw(IMSI);
+        verify(imsiScscfDao, never()).clearScscf(IMSI);
+        verify(locationIpSmGwDao).clearIpSmGw(SECOND_IMSI);
+        verify(imsiScscfDao).clearScscf(SECOND_IMSI);
+    }
+
+    @Test
+    void itTerminatesEveryImsiWhenTheAccessPolicyDeniesAllOfThem() {
+        // GIVEN
+        doReturn(CompletableFuture.completedFuture(null)).when(diameterSessions).send(any());
+        when(accessPolicy.isImsAccessAllowed(IMSI)).thenReturn(Optional.of(false));
+        when(accessPolicy.isImsAccessAllowed(SECOND_IMSI)).thenReturn(Optional.of(false));
+        when(imsiScscfDao.getScscf(IMSI)).thenReturn(Optional.of(scscfFor(IMSI)));
+        when(imsiScscfDao.getScscf(SECOND_IMSI)).thenReturn(Optional.of(scscfFor(SECOND_IMSI)));
+
+        // WHEN
+        underTest.receiveSimDeactivated(new SimDeactivated("iccid", MSISDN, List.of(IMSI, SECOND_IMSI)));
+
+        // THEN
+        final var captor = ArgumentCaptor.forClass(RegistrationTerminationRequest.Out.class);
+        verify(diameterSessions, times(2)).send(captor.capture());
+        assertThat(captor.getAllValues()).extracting(RegistrationTerminationRequest.Out::getUserName)
+            .containsExactlyInAnyOrder(IMSI, SECOND_IMSI);
+        verify(locationIpSmGwDao).clearIpSmGw(IMSI);
+        verify(locationIpSmGwDao).clearIpSmGw(SECOND_IMSI);
+        verify(imsiScscfDao).clearScscf(IMSI);
+        verify(imsiScscfDao).clearScscf(SECOND_IMSI);
+    }
+
+    private static ImsiScscf scscfFor(final String imsi) {
+        final var scscf = new ImsiScscf();
+        scscf.setDiameterHost("scscf-" + imsi + ".example.org");
+        scscf.setDiameterRealm("ims.mnc002.mcc262.3gppnetwork.org");
+        return scscf;
     }
 }

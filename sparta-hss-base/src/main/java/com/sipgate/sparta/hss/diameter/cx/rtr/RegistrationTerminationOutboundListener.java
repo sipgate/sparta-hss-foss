@@ -14,6 +14,7 @@ import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
 import com.sipgate.sparta.hss.diameter.common.BaseOutboundListener;
 import com.sipgate.sparta.hss.persistence.ImsiScscfDao;
 import com.sipgate.sparta.hss.persistence.LocationIpSmGwDao;
+import com.sipgate.sparta.hss.service.accessPolicy.AccessPolicy;
 import com.sipgate.sparta.hss.service.subscription.SimDeactivated;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -22,27 +23,34 @@ public class RegistrationTerminationOutboundListener extends BaseOutboundListene
 
     private final ImsiScscfDao imsiScscfDao;
     private final LocationIpSmGwDao locationIpSmGwDao;
+    private final AccessPolicy accessPolicy;
 
     public RegistrationTerminationOutboundListener(
         final DiameterSessions diameterSessions,
         final ImsiScscfDao imsiScscfDao,
-        final LocationIpSmGwDao locationIpSmGwDao) {
+        final LocationIpSmGwDao locationIpSmGwDao, final AccessPolicy accessPolicy) {
         super(diameterSessions);
         this.imsiScscfDao = imsiScscfDao;
         this.locationIpSmGwDao = locationIpSmGwDao;
+        this.accessPolicy = accessPolicy;
     }
 
     public void receiveRequest(final RegistrationTerminationEvent event) {
         onEvent(event);
     }
 
-    /// De-registers the IMSIs of the deactivated SIM from their stored S-CSCF, so the IMS
-    /// registration ends with the subscription: RTR with Reason-Code `PERMANENT_TERMINATION`
-    /// (TS 29.228 §6.1.3.1), then the assignment is cleared. The IP-SM-GW row belongs to the
-    /// same IMS registration and is removed without signalling.
+    /// De-registers the IMSIs of the deactivated SIM from their stored S-CSCF, if the configured
+    /// `accessPolicy` currently denies IMS access for this IMSI. The IMS registration ends for
+    /// any active subscription: RTR with Reason-Code `PERMANENT_TERMINATION` (TS 29.228 §6.1.3.1),
+    /// then the assignment is cleared. The IP-SM-GW row belongs to the same IMS registration and
+    /// is removed without signalling.
     @Transactional
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
+            if (accessPolicy.isImsAccessAllowed(imsi).orElse(false)) {
+                continue;
+            }
+
             locationIpSmGwDao.clearIpSmGw(imsi);
 
             final var scscf = imsiScscfDao.getScscf(imsi);

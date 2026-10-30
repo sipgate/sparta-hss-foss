@@ -69,8 +69,9 @@ public class SwxConfiguration {
     @Bean
     public SwxRegistrationTerminationOutboundListener swxRegistrationTerminationOutboundListener(
         final DiameterSessions diameterSessions,
-        final LocationVowifiDao locationVowifiDao) {
-        return new SwxRegistrationTerminationOutboundListener(diameterSessions, locationVowifiDao);
+        final LocationVowifiDao locationVowifiDao,
+        final AccessPolicy accessPolicy) {
+        return new SwxRegistrationTerminationOutboundListener(diameterSessions, locationVowifiDao, accessPolicy);
     }
 
     @Bean
