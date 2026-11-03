@@ -59,6 +59,13 @@ There is no default: with the property unset and no bean defined of your own, Sp
 will not start. You are welcome to configure your own implementation that adheres to
 the `AccessPolicy` interface.
 
+### `SubscriptionStateService`
+
+Your business logic can call the methods `activate` or `deactivate` of the
+`SubscriptionStateService` bean. This updates the SIM's `isActive` column in the database,
+and may trigger a de-registration on the network and IMS, depending on the
+[AccessPolicy](#accesspolicy) in use.
+
 ## Embedding without Spring
 
 A minimal non-Spring embedding needs:

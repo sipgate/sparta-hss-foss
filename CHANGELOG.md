@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `EutranAccessPolicy` to `AccessPolicy` (also: moved to another package)
 - Renamed configuration property `sipgate.eutran-access-policy` to `sipgate.access-policy`.
 - Renamed metric `eutran_access_rejected` to `access_rejected` in order to include IMS metrics
+- Implementations of `BaseOutboundListener` catch exceptions inside `receiveRequest` so they don't stop other listeners
 
 ### Fixed
 
