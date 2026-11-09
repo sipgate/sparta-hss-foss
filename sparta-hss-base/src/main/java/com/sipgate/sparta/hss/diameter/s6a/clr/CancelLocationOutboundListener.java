@@ -4,6 +4,7 @@ import static com.sipgate.sparta.diameter._3gpp.common._3gppConstants.VENDOR_ID_
 import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.APP_ID_S6A_S6D;
 import static com.sipgate.sparta.diameter._3gpp.s6a.S6aConstants.CANCELLATION_TYPE_SUBSCRIPTION_WITHDRAWAL;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AUTH_SESSION_STATE_NOT_MAINTAINED;
+import static jakarta.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import com.sipgate.sparta.diameter._3gpp.s6a.messages.CancelLocationRequest;
 import com.sipgate.sparta.hss.diameter.client.DiameterSessions;
@@ -44,7 +45,7 @@ public class CancelLocationOutboundListener extends BaseOutboundListener {
     /// must be cut off immediately, not at the next attach: CLR with Cancellation-Type
     /// `SUBSCRIPTION_WITHDRAWAL` without the re-attach flag (TS 23.401 §5.3.8.4), then the row
     /// is removed.
-    @Transactional
+    @Transactional(REQUIRES_NEW)
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
             try {

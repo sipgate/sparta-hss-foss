@@ -6,6 +6,7 @@ import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_REASON_IN
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.REASON_CODE_PERMANENT_TERMINATION;
 import static com.sipgate.sparta.diameter._3gpp.swx.SwxConstants.APP_ID_SWX;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AUTH_SESSION_STATE_NOT_MAINTAINED;
+import static jakarta.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import com.sipgate.sparta.diameter._3gpp.swx.messages.RegistrationTerminationRequest;
 import com.sipgate.sparta.diameter.base.core.avp.AVP;
@@ -40,7 +41,7 @@ public class SwxRegistrationTerminationOutboundListener extends BaseOutboundList
     /// denies IMS access for the SIM's IMSIs.
     /// Send an RTR with Reason-Code `PERMANENT_TERMINATION` (TS 29.273 §8.1.2.2.3) to the AAA,
     /// then the assignment is cleared in the HSS data store.
-    @Transactional
+    @Transactional(REQUIRES_NEW)
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
             try {

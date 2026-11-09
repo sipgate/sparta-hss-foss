@@ -59,9 +59,12 @@ Outbound requests (CLR, ISD, RTR) follow the event path: the handler publishes a
 `BaseEvent` carrying the built request, and a listener on the outbound pool sends it.
 A domain event can also trigger outbound requests: on `SimDeactivated` each
 interface's listener builds its requests from the event data.
-Events are published inside the publishing transaction and dispatched immediately,
+`BaseEvent`s are published inside the publishing transaction and dispatched immediately,
 fire-and-forget: a transaction that fails after publishing leaves the peers already
 notified while the database is unchanged — an accepted, self-healing inconsistency.
+`SimDeactivated` is the exception: it dispatches only after the publishing transaction
+committed, because its listeners consult the `accessPolicy` -- i.e. the database -- and
+must observe the deactivation they tear down.
 
 The HSS does **not** wait for the answer to these requests — the response is logged,
 that's it. Some flows technically expect the HSS to wait (e.g. the ULA should only
@@ -72,8 +75,11 @@ wait: in most cases waiting only makes the transaction slower with no benefit.
 
 `SubscriptionStateService` (`com.sipgate.sparta.hss.service.subscription`) activates or deactivates a SIM by
 ICCID. Deactivation changes the DB (`sim.isActive`) and publishes one `SimDeactivated`
-event; the listener of each enabled interface then checks the currently-configured `accessPolicy` and sends
-that interface's termination message and removes its registration rows:
+event, dispatched after the deactivating transaction committed: the listener of each
+enabled interface — in its own transaction, so one listener's failure neither rolls back
+the deactivation nor affects the other listeners — then checks the currently-configured
+`accessPolicy` and sends that interface's termination message and removes its
+registration rows:
 
 - **S6a:** CLR `SUBSCRIPTION_WITHDRAWAL` to the stored MME.
 - **Cx:** RTR `PERMANENT_TERMINATION` to the stored S-CSCF.

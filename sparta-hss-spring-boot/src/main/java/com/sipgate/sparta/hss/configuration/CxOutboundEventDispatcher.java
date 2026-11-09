@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import static org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT;
 
 public class CxOutboundEventDispatcher {
 
@@ -25,7 +28,10 @@ public class CxOutboundEventDispatcher {
         registrationTerminationOutboundListener.receiveRequest(event);
     }
 
-    @EventListener
+    /// Dispatches after the deactivating transaction committed, so the teardown observes the
+    /// committed `sim.isActive` state and cannot poison the deactivation itself: a listener
+    /// failure neither rolls back the deactivation nor blocks the caller that caused it.
+    @TransactionalEventListener(phase = AFTER_COMMIT)
     public void onSimDeactivated(final SimDeactivated event) {
         try {
             registrationTerminationOutboundListener.receiveSimDeactivated(event);

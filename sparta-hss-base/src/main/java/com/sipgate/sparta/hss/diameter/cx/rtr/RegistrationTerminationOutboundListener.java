@@ -6,6 +6,7 @@ import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_REASON_CO
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.AVP_REASON_INFO;
 import static com.sipgate.sparta.diameter._3gpp.cxdx.CxDxConstants.REASON_CODE_PERMANENT_TERMINATION;
 import static com.sipgate.sparta.diameter.base.core.DiameterConstants.AUTH_SESSION_STATE_NOT_MAINTAINED;
+import static jakarta.transaction.Transactional.TxType.REQUIRES_NEW;
 
 import com.sipgate.sparta.diameter._3gpp.cxdx.messages.RegistrationTerminationRequest;
 import com.sipgate.sparta.diameter.base.core.avp.AVP;
@@ -52,7 +53,7 @@ public class RegistrationTerminationOutboundListener extends BaseOutboundListene
     /// any active subscription: RTR with Reason-Code `PERMANENT_TERMINATION` (TS 29.228 §6.1.3.1),
     /// then the assignment is cleared. The IP-SM-GW row belongs to the same IMS registration and
     /// is removed without signalling.
-    @Transactional
+    @Transactional(REQUIRES_NEW)
     public void receiveSimDeactivated(final SimDeactivated event) {
         for (final var imsi : event.imsis()) {
             try {
