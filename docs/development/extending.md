@@ -59,6 +59,10 @@ There is no default: with the property unset and no bean defined of your own, Sp
 will not start. You are welcome to configure your own implementation that adheres to
 the `AccessPolicy` interface.
 
+How access denial behaves at each Diameter interface, and how to roll the switch out
+without interrupting subscribers, is described in
+[Subscription state](../concepts/subscription-state.md).
+
 ### `SubscriptionStateService`
 
 Your business logic can call the methods `activate` or `deactivate` of the

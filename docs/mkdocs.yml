@@ -40,6 +40,7 @@ nav:
       - Authentication: concepts/authentication.md
       - Subscriber profiles: concepts/profiles.md
       - Roaming: concepts/roaming.md
+      - Subscription state: concepts/subscription-state.md
   - Reference:
       - Configuration: reference/configuration.md
       - HTTP API: reference/http-api.md
