@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SubscriptionStateService` to activate/deactivate a SIM by ICCID. Deactivation flips `sim.isActive` and publishes 
   one `SimDeactivated` event; each enabled interface's outbound listener then checks the configured AccessPolicy again and detaches the subscriber: 
   S6a CLR `SUBSCRIPTION_WITHDRAWAL` to the stored MME, Cx RTR `PERMANENT_TERMINATION` to the stored S-CSCF, 
-  SWx RTR `PERMANENT_TERMINATION` to the stored 3GPP AAA server, then the registration rows are removed. 
+  SWx RTR `PERMANENT_TERMINATION` to the stored 3GPP AAA server, then the registration rows are removed.
+  See the documentation for [SubscriptionStateService](https://sipgate.github.io/sparta-hss-foss/development/extending/#subscriptionstateservice) 
   Fire-and-forget like all outbound requests; repeated deactivation is idempotent.
 
 ### Changed

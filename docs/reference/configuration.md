@@ -48,17 +48,17 @@ Whether the `sim` table's `op` column holds the pre-computed **OPc** or the raw
 
 Environment variable: `SIPGATE_ACCESS_POLICY`.
 
-Which built-in [AccessPolicy](../development/extending.md#accesspolicy) gates 4G and IMS
-access — see [Subscription state](../concepts/subscription-state.md) for how each
-interface behaves and how to roll the switch out:
+Set one of the following to enable a built-in [AccessPolicy](../development/extending.md#accesspolicy):
 
-- `subscription-state` (shipped `application.yaml`) — the `sim` table's `isActive`
-  flag; an unknown IMSI yields no decision (`DIAMETER_UNABLE_TO_COMPLY`)
+- `subscription-state` (used in `sparta-hss-spring-boot/.../application.yaml`) looks at the `sim`
+  table's `isActive` flag; an unknown IMSI yields no decision (usually `DIAMETER_UNABLE_TO_COMPLY`)
 - `allow-all` — every subscriber is allowed
 
 There is no code default: unset, the HSS does not start unless the application defines its own
-`AccessPolicy` bean. Such an application must leave the property unset — a built-in policy next to
-its own bean fails the start.
+`AccessPolicy` bean.
+
+If a custom `AccessPolicy` bean is created, the application must leave the property unset (or set
+to another value), or the application fails to start (`More than one bean satisfies AccessPolicy` error).
 
 ## HTTP admin endpoints
 

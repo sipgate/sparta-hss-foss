@@ -1,8 +1,9 @@
 # Extending the core
 
-`sparta-hss-base` is published as a library and designed to be embedded in your own
-application. The Spring Boot module exists as the reference deployment, not as a
-requirement.
+`sparta-hss-base` is published as a library and designed to be embedded in your own application and
+business context (i.e. for managing customer accounts and balances, roaming restrictions, etc.).
+This document describes the interfaces to adapt the core functionality that is provided. The Spring
+Boot module exists as the reference deployment, not as a requirement.
 
 ## Modules
 
@@ -57,18 +58,24 @@ The Spring Boot module ships two implementations, selected by
 `subscription-state` (the SIM's `active` flag in the database) and `allow-all`.
 There is no default: with the property unset and no bean defined of your own, Sparta HSS
 will not start. You are welcome to configure your own implementation that adheres to
-the `AccessPolicy` interface.
-
-How access denial behaves at each Diameter interface, and how to roll the switch out
-without interrupting subscribers, is described in
-[Subscription state](../concepts/subscription-state.md).
+the `AccessPolicy` interface, just add `@Bean` to the implementation so it is created.
 
 ### `SubscriptionStateService`
 
-Your business logic can call the methods `activate` or `deactivate` of the
-`SubscriptionStateService` bean. This updates the SIM's `isActive` column in the database,
-and may trigger a de-registration on the network and IMS, depending on the
-[AccessPolicy](#accesspolicy) in use.
+Your business logic (i.e. a REST endpoint or Kafka listener) can call the methods
+`activate` or `deactivate` of the `SubscriptionStateService` bean. This updates the SIM's
+`isActive` column in the database, and may trigger a de-registration on the network and
+IMS, depending on the [AccessPolicy](#accesspolicy) in use.
+
+After marking a SIM as deactivated, the service publishes a `SimDeactivated` event.
+Multiple listeners act on a deactivation, i.e. by sending diameter termination messages
+for the IMSIs of the SIM:
+
+| Interface | Message | Sent to |
+|-----------|---------|---------|
+| S6a/S6d | Cancel-Location, `SUBSCRIPTION_WITHDRAWAL` | the stored MME |
+| Cx/Dx | Registration-Termination, `PERMANENT_TERMINATION` | the stored S-CSCF |
+| SWx | Registration-Termination, `PERMANENT_TERMINATION` | the stored 3GPP AAA server |
 
 ## Embedding without Spring
 
