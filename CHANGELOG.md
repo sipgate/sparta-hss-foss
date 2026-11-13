@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-13
+
 ### Added
 
 - Cx and SWx handlers for authentication and server assignment check the AccessPolicy interface before allowing access to the IMS core.
@@ -69,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (SAR, MAR, RTR), S6a (AIR, ULR, ISD, NOR, PUR) and harness connectivity.
   Individual cases run via `make run-e2e-single TEST=...`.
 
-[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/2.0.0...HEAD
+[unreleased]: https://github.com/sipgate/sparta-hss-foss/compare/2.1.0...HEAD
+[2.1.0]: https://github.com/sipgate/sparta-hss-foss/compare/2.0.0...2.1.0
 [2.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/1.0.0...2.0.0
 [1.0.0]: https://github.com/sipgate/sparta-hss-foss/compare/eb1f9e6...1.0.0
